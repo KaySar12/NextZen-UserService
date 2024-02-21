@@ -1,0 +1,1 @@
+[{"name":"build/sysroot/usr/bin/casaos-user-service","path":"dist/casaos-user-service-amd64_linux_amd64_v1/build/sysroot/usr/bin/casaos-user-service","goos":"linux","goarch":"amd64","goamd64":"v1","internal_type":4,"type":"Binary","extra":{"Binary":"casaos-user-service","Ext":"","ID":"casaos-user-service-amd64"}}]
