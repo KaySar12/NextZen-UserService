@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -13,18 +14,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/KaySar12/NextZen-Common/external"
-	"github.com/KaySar12/NextZen-Common/model"
-	util_http "github.com/KaySar12/NextZen-Common/utils/http"
-	"github.com/KaySar12/NextZen-Common/utils/jwt"
-	"github.com/KaySar12/NextZen-Common/utils/logger"
-	"github.com/KaySar12/NextZen-UserService/common"
-	"github.com/KaySar12/NextZen-UserService/pkg/config"
-	"github.com/KaySar12/NextZen-UserService/pkg/sqlite"
-	"github.com/KaySar12/NextZen-UserService/pkg/utils/encryption"
-	"github.com/KaySar12/NextZen-UserService/pkg/utils/random"
-	"github.com/KaySar12/NextZen-UserService/route"
-	"github.com/KaySar12/NextZen-UserService/service"
+	"github.com/IceWhaleTech/CasaOS-Common/external"
+	"github.com/IceWhaleTech/CasaOS-Common/model"
+	util_http "github.com/IceWhaleTech/CasaOS-Common/utils/http"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/jwt"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/logger"
+	"github.com/IceWhaleTech/CasaOS-UserService/codegen/message_bus"
+	"github.com/IceWhaleTech/CasaOS-UserService/common"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/sqlite"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/encryption"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/random"
+	"github.com/IceWhaleTech/CasaOS-UserService/route"
+	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	"github.com/coreos/go-systemd/daemon"
 	"go.uber.org/zap"
 )
@@ -153,6 +155,23 @@ func main() {
 	}
 	go route.EventListen()
 	logger.Info("User service is listening...", zap.Any("address", listener.Addr().String()), zap.String("filepath", addressFilePath))
+
+	var events []message_bus.EventType
+	events = append(events, message_bus.EventType{Name: "zimaos:user:save_config", SourceID: common.SERVICENAME, PropertyTypeList: []message_bus.PropertyType{}})
+	// register at message bus
+	for i := 0; i < 10; i++ {
+		response, err := service.MyService.MessageBus().RegisterEventTypesWithResponse(context.Background(), events)
+		if err != nil {
+			logger.Error("error when trying to register one or more event types - some event type will not be discoverable", zap.Error(err))
+		}
+		if response != nil && response.StatusCode() != http.StatusOK {
+			logger.Error("error when trying to register one or more event types - some event type will not be discoverable", zap.String("status", response.Status()), zap.String("body", string(response.Body)))
+		}
+		if response.StatusCode() == http.StatusOK {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
 	s := &http.Server{
 		Handler:           mux,

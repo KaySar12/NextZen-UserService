@@ -4,10 +4,10 @@ import (
 	"crypto/ecdsa"
 	"os"
 
-	"github.com/KaySar12/NextZen-Common/middleware"
-	"github.com/KaySar12/NextZen-Common/utils/jwt"
-	v1 "github.com/KaySar12/NextZen-UserService/route/v1"
-	"github.com/KaySar12/NextZen-UserService/service"
+	"github.com/IceWhaleTech/CasaOS-Common/middleware"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/jwt"
+	v1 "github.com/IceWhaleTech/CasaOS-UserService/route/v1"
+	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )

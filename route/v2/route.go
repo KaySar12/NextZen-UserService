@@ -1,6 +1,6 @@
 package v2
 
-import codegen "github.com/KaySar12/NextZen-UserService/codegen/user_service"
+import codegen "github.com/IceWhaleTech/CasaOS-UserService/codegen/user_service"
 
 type UserService struct{}
 

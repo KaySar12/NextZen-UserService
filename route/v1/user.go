@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
 	json2 "encoding/json"
@@ -13,24 +14,28 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/KaySar12/NextZen-Common/utils/common_err"
-	"github.com/KaySar12/NextZen-Common/utils/jwt"
-	"github.com/KaySar12/NextZen-Common/utils/logger"
-	"github.com/KaySar12/NextZen-UserService/model"
-	"github.com/KaySar12/NextZen-UserService/model/system_model"
-	"github.com/KaySar12/NextZen-UserService/pkg/config"
-	"github.com/KaySar12/NextZen-UserService/pkg/utils/encryption"
-	"github.com/KaySar12/NextZen-UserService/pkg/utils/file"
-	model2 "github.com/KaySar12/NextZen-UserService/service/model"
+	"github.com/IceWhaleTech/CasaOS-Common/external"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/common_err"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/jwt"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/logger"
+	"github.com/IceWhaleTech/CasaOS-UserService/common"
+	"github.com/IceWhaleTech/CasaOS-UserService/model"
+	"github.com/IceWhaleTech/CasaOS-UserService/model/system_model"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/encryption"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/file"
+	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
 	uuid "github.com/satori/go.uuid"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 
-	"github.com/KaySar12/NextZen-UserService/service"
+	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -81,6 +86,8 @@ func PostUserRegister(c *gin.Context) {
 	c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS)})
 }
 
+var limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
+
 // @Summary login
 // @Produce  application/json
 // @Accept application/json
@@ -90,6 +97,16 @@ func PostUserRegister(c *gin.Context) {
 // @Success 200 {string} string "ok"
 // @Router /user/login [post]
 func PostUserLogin(c *gin.Context) {
+
+	if !limiter.Allow() {
+		c.JSON(common_err.TOO_MANY_REQUEST,
+			model.Result{
+				Success: common_err.TOO_MANY_LOGIN_REQUESTS,
+				Message: common_err.GetMsg(common_err.TOO_MANY_LOGIN_REQUESTS),
+			})
+		return
+	}
+
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 
@@ -108,14 +125,17 @@ func PostUserLogin(c *gin.Context) {
 	user := service.MyService.User().GetUserAllInfoByName(username)
 	if user.Id == 0 {
 		c.JSON(common_err.CLIENT_ERROR,
-			model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
+			model.Result{Success: common_err.USER_NOT_EXIST_OR_PWD_INVALID, Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
 		return
 	}
 	if user.Password != encryption.GetMD5ByStr(password) {
 		c.JSON(common_err.CLIENT_ERROR,
-			model.Result{Success: common_err.PWD_INVALID, Message: common_err.GetMsg(common_err.PWD_INVALID)})
+			model.Result{Success: common_err.USER_NOT_EXIST_OR_PWD_INVALID, Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
 		return
 	}
+
+	// clean limit
+	limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
 
 	privateKey, _ := service.MyService.User().GetKeyPair()
 
@@ -255,7 +275,7 @@ func PutUserInfo(c *gin.Context) {
 	user := service.MyService.User().GetUserInfoById(id)
 	if user.Id == 0 {
 		c.JSON(common_err.SERVICE_ERROR,
-			model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
+			model.Result{Success: common_err.USER_NOT_EXIST_OR_PWD_INVALID, Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
 		return
 	}
 	if len(json.Username) > 0 {
@@ -507,6 +527,20 @@ func PostUserCustomConf(c *gin.Context) {
 		return
 	}
 
+	if name == "system" {
+		dataMap := make(map[string]string, 1)
+		dataMap["system"] = string(data)
+		response, err := service.MyService.MessageBus().PublishEventWithResponse(context.Background(), common.SERVICENAME, "zimaos:user:save_config", dataMap)
+		if err != nil {
+			logger.Error("failed to publish event to message bus", zap.Error(err), zap.Any("event", string(data)))
+			return
+		}
+		if response.StatusCode() != http.StatusOK {
+			logger.Error("failed to publish event to message bus", zap.String("status", response.Status()), zap.Any("response", response))
+		}
+
+	}
+
 	c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: json2.RawMessage(string(data))})
 }
 
@@ -658,23 +692,35 @@ func GetUserImage(c *gin.Context) {
 		c.JSON(http.StatusNotFound, model.Result{Success: common_err.INVALID_PARAMS, Message: common_err.GetMsg(common_err.INVALID_PARAMS)})
 		return
 	}
-	if !file.Exists(filePath) {
+	absFilePath, err := filepath.Abs(filepath.Clean(filePath))
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.Result{Success: common_err.INVALID_PARAMS, Message: common_err.GetMsg(common_err.INVALID_PARAMS)})
+		return
+	}
+	if !file.Exists(absFilePath) {
 		c.JSON(http.StatusNotFound, model.Result{Success: common_err.FILE_DOES_NOT_EXIST, Message: common_err.GetMsg(common_err.FILE_DOES_NOT_EXIST)})
 		return
 	}
-	if !strings.Contains(filePath, config.AppInfo.UserDataPath) {
+	if !strings.Contains(absFilePath, config.AppInfo.UserDataPath) {
 		c.JSON(http.StatusNotFound, model.Result{Success: common_err.INSUFFICIENT_PERMISSIONS, Message: common_err.GetMsg(common_err.INSUFFICIENT_PERMISSIONS)})
 		return
 	}
 
-	fileTmp, _ := os.Open(filePath)
-	defer fileTmp.Close()
+	matched, err := regexp.MatchString(`^/var/lib/casaos/\d`, absFilePath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.Result{Success: common_err.INSUFFICIENT_PERMISSIONS, Message: common_err.GetMsg(common_err.INSUFFICIENT_PERMISSIONS)})
+		return
+	}
+	if !matched {
+		c.JSON(http.StatusNotFound, model.Result{Success: common_err.INSUFFICIENT_PERMISSIONS, Message: common_err.GetMsg(common_err.INSUFFICIENT_PERMISSIONS)})
+		return
+	}
 
-	fileName := path.Base(filePath)
+	fileName := path.Base(absFilePath)
 
 	// @tiger - RESTful 规范下不应该返回文件本身内容，而是返回文件的静态URL，由前端去解析
 	c.Header("Content-Disposition", "attachment; filename*=utf-8''"+url2.PathEscape(fileName))
-	c.File(filePath)
+	c.File(absFilePath)
 }
 
 func DeleteUserImage(c *gin.Context) {
@@ -776,6 +822,11 @@ func GetUserStatus(c *gin.Context) {
 		data["key"] = key
 		data["initialized"] = false
 	}
+	gpus, err := external.NvidiaGPUInfoList()
+	if err != nil {
+		logger.Error("NvidiaGPUInfoList error", zap.Error(err))
+	}
+	data["gpus"] = len(gpus)
 	c.JSON(common_err.SUCCESS,
 		model.Result{
 			Success: common_err.SUCCESS,

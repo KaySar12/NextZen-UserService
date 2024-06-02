@@ -1,9 +1,9 @@
-module github.com/KaySar12/NextZen-UserService
+module github.com/IceWhaleTech/CasaOS-UserService
 
 go 1.20
 
 require (
-	github.com/KaySar12/NextZen-Common v1.0.1
+	github.com/IceWhaleTech/CasaOS-Common v0.4.8-alpha12
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/deepmap/oapi-codegen v1.12.4
 	github.com/getkin/kin-openapi v0.117.0
@@ -15,6 +15,7 @@ require (
 	github.com/tidwall/gjson v1.14.4
 	go.uber.org/zap v1.24.0
 	golang.org/x/net v0.17.0
+	golang.org/x/time v0.3.0
 	gopkg.in/ini.v1 v1.67.0
 	gorm.io/gorm v1.25.0
 )
@@ -75,7 +76,6 @@ require (
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

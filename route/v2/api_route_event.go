@@ -3,8 +3,8 @@ package v2
 import (
 	"net/http"
 
-	codegen "github.com/KaySar12/NextZen-UserService/codegen/user_service"
-	"github.com/KaySar12/NextZen-UserService/service"
+	codegen "github.com/IceWhaleTech/CasaOS-UserService/codegen/user_service"
+	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	"github.com/labstack/echo/v4"
 )
 

@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/KaySar12/NextZen-Common/external"
-	"github.com/KaySar12/NextZen-Common/utils/logger"
-	message_bus "github.com/KaySar12/NextZen-UserService/codegen/message_bus"
-	"github.com/KaySar12/NextZen-UserService/model"
-	"github.com/KaySar12/NextZen-UserService/pkg/config"
-	"github.com/KaySar12/NextZen-UserService/service"
+	"github.com/IceWhaleTech/CasaOS-Common/external"
+	"github.com/IceWhaleTech/CasaOS-Common/utils/logger"
+	message_bus "github.com/IceWhaleTech/CasaOS-UserService/codegen/message_bus"
+	"github.com/IceWhaleTech/CasaOS-UserService/model"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
+	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	"go.uber.org/zap"
 	"golang.org/x/net/websocket"
 )
