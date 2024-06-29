@@ -25,3 +25,5 @@ node_modules/
 dist/
 .idea
 .package-lock.json
+*.sh
+build/scripts/setup/service.d/user-service/ubuntu/setup-user-service.sh

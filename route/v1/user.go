@@ -75,7 +75,7 @@ func PostUserRegister(c *gin.Context) {
 	user.Username = username
 	user.Password = encryption.GetMD5ByStr(pwd)
 	user.Role = "admin"
-
+	// user.Role = "user"
 	user = service.MyService.User().CreateUser(user)
 	if user.Id == 0 {
 		c.JSON(common_err.SERVICE_ERROR, model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
@@ -97,7 +97,6 @@ var limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
 // @Success 200 {string} string "ok"
 // @Router /user/login [post]
 func PostUserLogin(c *gin.Context) {
-
 	if !limiter.Allow() {
 		c.JSON(common_err.TOO_MANY_REQUEST,
 			model.Result{
@@ -810,18 +809,37 @@ func DeleteUserAll(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Success 200 {string} string "ok"
 // @Router /sys/init/check [get]
+// func GetUserStatus(c *gin.Context) {
+// 	data := make(map[string]interface{}, 2)
+
+// 	if service.MyService.User().GetUserCount() > 0 {
+// 		data["initialized"] = true
+// 		data["key"] = ""
+// 	} else {
+// 		key := uuid.NewV4().String()
+// 		service.UserRegisterHash[key] = key
+// 		data["key"] = key
+// 		data["initialized"] = false
+// 	}
+// 	gpus, err := external.NvidiaGPUInfoList()
+// 	if err != nil {
+// 		logger.Error("NvidiaGPUInfoList error", zap.Error(err))
+// 	}
+// 	data["gpus"] = len(gpus)
+// 	c.JSON(common_err.SUCCESS,
+// 		model.Result{
+// 			Success: common_err.SUCCESS,
+// 			Message: common_err.GetMsg(common_err.SUCCESS),
+// 			Data:    data,
+// 		})
+// }
+
 func GetUserStatus(c *gin.Context) {
 	data := make(map[string]interface{}, 2)
-
-	if service.MyService.User().GetUserCount() > 0 {
-		data["initialized"] = true
-		data["key"] = ""
-	} else {
-		key := uuid.NewV4().String()
-		service.UserRegisterHash[key] = key
-		data["key"] = key
-		data["initialized"] = false
-	}
+	key := uuid.NewV4().String()
+	service.UserRegisterHash[key] = key
+	data["key"] = key
+	data["initialized"] = true
 	gpus, err := external.NvidiaGPUInfoList()
 	if err != nil {
 		logger.Error("NvidiaGPUInfoList error", zap.Error(err))
