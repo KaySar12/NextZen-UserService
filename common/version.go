@@ -1,4 +1,4 @@
 package common
 
-const Version = "0.4.8"
+const Version = "1.3.0"
 const SERVICENAME = "CasaOS-UserService"

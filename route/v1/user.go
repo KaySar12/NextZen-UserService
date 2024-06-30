@@ -48,6 +48,7 @@ func PostUserRegister(c *gin.Context) {
 	username := json["username"]
 	pwd := json["password"]
 	key := json["key"]
+	role := json["role"]
 	if _, ok := service.UserRegisterHash[key]; !ok {
 		c.JSON(common_err.CLIENT_ERROR,
 			model.Result{Success: common_err.KEY_NOT_EXIST, Message: common_err.GetMsg(common_err.KEY_NOT_EXIST)})
@@ -74,7 +75,7 @@ func PostUserRegister(c *gin.Context) {
 	user := model2.UserDBModel{}
 	user.Username = username
 	user.Password = encryption.GetMD5ByStr(pwd)
-	user.Role = "admin"
+	user.Role = role
 	// user.Role = "user"
 	user = service.MyService.User().CreateUser(user)
 	if user.Id == 0 {
