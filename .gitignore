@@ -30,3 +30,4 @@ build/scripts/setup/service.d/user-service/ubuntu/setup-user-service.sh
 linux-amd64-nextzenos-user-service-v1.3.tar.gz
 build/sysroot/usr/bin/casaos-user-service
 dist/casaos-user-service-amd64_linux_amd64_v1/build/sysroot/usr/bin/casaos-user-service
+/build/scripts/setup
