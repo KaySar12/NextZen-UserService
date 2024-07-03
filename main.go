@@ -101,7 +101,6 @@ func main() {
 	v1Router := route.InitRouter()
 	v2Router := route.InitV2Router()
 	v2DocRouter := route.InitV2DocRouter(_docHTML, _docYAML)
-
 	_, publicKey := service.MyService.User().GetKeyPair()
 
 	jswkJSON, err := jwt.GenerateJwksJSON(publicKey)

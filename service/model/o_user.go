@@ -11,7 +11,7 @@ package model
 
 import "time"
 
-//Soon to be removed
+// Soon to be removed
 type UserDBModel struct {
 	Id          int       `gorm:"column:id;primary_key" json:"id"`
 	Username    string    `json:"username"`

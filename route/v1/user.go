@@ -1,13 +1,17 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
+	"encoding/json"
 	json2 "encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	url2 "net/url"
@@ -38,6 +42,41 @@ import (
 	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	"github.com/gin-gonic/gin"
 )
+
+type OMVLogin struct {
+	Response struct {
+		Authenticated bool   `json:"authenticated"`
+		Username      string `json:"username"`
+		Permissions   struct {
+			Role string `json:"role"`
+		} `json:"permissions"`
+		SessionID string `json:"sessionid"`
+	} `json:"response"`
+	Error interface{} `json:"error"`
+}
+type OMVGetUser struct {
+	Response struct {
+		Name            string        `json:"name"`
+		UID             int           `json:"uid"`
+		Gid             int           `json:"gid"`
+		Comment         string        `json:"comment"`
+		Dir             string        `json:"dir"`
+		Shell           string        `json:"shell"`
+		Lastchanged     string        `json:"lastchanged"`
+		Minimum         string        `json:"minimum"`
+		Maximum         string        `json:"maximum"`
+		Warn            string        `json:"warn"`
+		Inactive        string        `json:"inactive"`
+		Expire          string        `json:"expire"`
+		Reserved        string        `json:"reserved"`
+		Groups          []string      `json:"groups"`
+		System          bool          `json:"system"`
+		Email           string        `json:"email"`
+		Disallowusermod bool          `json:"disallowusermod"`
+		Sshpubkeys      []interface{} `json:"sshpubkeys"`
+	} `json:"response"`
+	Error interface{} `json:"error"`
+}
 
 // @Summary register user
 // @Router /user/register/ [post]
@@ -133,7 +172,6 @@ func PostUserLogin(c *gin.Context) {
 			model.Result{Success: common_err.USER_NOT_EXIST_OR_PWD_INVALID, Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
 		return
 	}
-
 	// clean limit
 	limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
 
@@ -141,13 +179,13 @@ func PostUserLogin(c *gin.Context) {
 
 	token := system_model.VerifyInformation{}
 
-	accessToken, err := jwt.GetAccessToken(user.Username, privateKey, user.Id)
+	accessToken, err := jwt.GetAccessToken(username, privateKey, user.Id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.SERVICE_ERROR, Message: err.Error()})
 	}
 	token.AccessToken = accessToken
 
-	refreshToken, err := jwt.GetRefreshToken(user.Username, privateKey, user.Id)
+	refreshToken, err := jwt.GetRefreshToken(username, privateKey, user.Id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.SERVICE_ERROR, Message: err.Error()})
 	}
@@ -167,6 +205,147 @@ func PostUserLogin(c *gin.Context) {
 			Message: common_err.GetMsg(common_err.SUCCESS),
 			Data:    data,
 		})
+}
+func PostOMVLogin(c *gin.Context) {
+	if !limiter.Allow() {
+		c.JSON(common_err.TOO_MANY_REQUEST,
+			model.Result{
+				Success: common_err.TOO_MANY_LOGIN_REQUESTS,
+				Message: common_err.GetMsg(common_err.TOO_MANY_LOGIN_REQUESTS),
+			})
+		return
+	}
+
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+
+	username := json["username"]
+
+	password := json["password"]
+	res := LoginSession(username, password)
+	var resData OMVLogin
+	err := json2.Unmarshal([]byte(res), &resData)
+
+	if err != nil {
+		// Handle the error, for example, log it or return it
+		log.Printf("Error getting user: %v", err)
+		return // or handle it in a way that fits your application's error handling strategy
+	}
+
+	if !resData.Response.Authenticated {
+		c.JSON(common_err.CLIENT_ERROR,
+			model.Result{Success: common_err.USER_NOT_EXIST_OR_PWD_INVALID, Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
+		return
+	}
+
+	getUser, err := GetOMVUser(username, resData.Response.SessionID)
+
+	if err != nil {
+		// Handle the error, for example, log it or return it
+		log.Printf("Error getting user: %v", err)
+		return // or handle it in a way that fits your application's error handling strategy
+	}
+
+	var userData OMVGetUser
+	err = json2.Unmarshal([]byte(getUser), &userData)
+
+	if err != nil {
+		// Handle the error, for example, log it or return it
+		log.Printf("Error getting user: %v", err)
+		return // or handle it in a way that fits your application's error handling strategy
+	}
+
+	if isEmpty(userData.Response) {
+		c.JSON(common_err.CLIENT_ERROR,
+			model.Result{
+				Success: common_err.USER_NOT_EXIST_OR_PWD_INVALID,
+				Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
+		return
+	}
+	c.SetCookie(
+		"sessionID",
+		resData.Response.SessionID,
+		3600,
+		"/",
+		"",
+		false,
+		true)
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    userData,
+		})
+
+}
+
+func isEmpty(obj interface{}) bool {
+	jsonData, err := json.Marshal(obj)
+	if err != nil && string(jsonData) == "{}" {
+		return true
+	}
+	return false
+}
+
+func GetOMVUser(username string, sessionID string) (string, error) {
+	// Prepare the RPC request
+	postBody, _ := json.Marshal(map[string]interface{}{
+		"service": "UserMgmt",
+		"method":  "getUser",
+		"params": map[string]string{
+			"name": username,
+		},
+	})
+	responseBody := bytes.NewBuffer(postBody)
+
+	// Create HTTP request and set session ID header
+	req, err := http.NewRequest("POST", "http://10.0.0.4:1081/rpc.php", responseBody)
+	if err != nil {
+		return "", fmt.Errorf("error creating request: %v", err)
+	}
+	req.Header.Set("X-OPENMEDIAVAULT-SESSIONID", sessionID) // Set session ID header
+
+	// Send the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close() // Ensure the response body is closed
+
+	// Check for HTTP errors
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+
+	// Read the response body
+	responseData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading response body: %v", err)
+	}
+
+	return string(responseData), nil
+}
+func LoginSession(username string, password string) string {
+	postBody, _ := json.Marshal(map[string]interface{}{
+		"service": "session",
+		"method":  "login",
+		"params": map[string]string{
+			"username": username,
+			"password": password,
+		},
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	response, err := http.Post("http://10.0.0.4:1081/rpc.php", "application/json", responseBody)
+	if err != nil {
+		fmt.Print(err.Error())
+		os.Exit(1)
+	}
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(responseData)
 }
 
 // @Summary edit user head
@@ -431,7 +610,7 @@ func GetUserInfoByUsername(c *gin.Context) {
 	}
 	user := service.MyService.User().GetUserInfoByUserName(username)
 	if user.Id == 0 {
-		c.JSON(common_err.SERVICE_ERROR, model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
+		c.JSON(common_err.USER_NOT_EXIST, model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
 		return
 	}
 

@@ -27,11 +27,12 @@ func InitRouter() *gin.Engine {
 
 	r.POST("/v1/users/register", v1.PostUserRegister)
 	r.POST("/v1/users/login", v1.PostUserLogin)
+	r.POST("/v1/users/omvlogin", v1.PostOMVLogin)
 	r.GET("/v1/users/name", v1.GetUserAllUsername) // all/name
 	r.POST("/v1/users/refresh", v1.PostUserRefreshToken)
 	// No short-term modifications
 	r.GET("/v1/users/image", v1.GetUserImage)
-
+	r.GET("/v1/users/:username", v1.GetUserInfoByUsername)
 	r.GET("/v1/users/status", v1.GetUserStatus) // init/check
 
 	v1Group := r.Group("/v1")
@@ -63,7 +64,7 @@ func InitRouter() *gin.Engine {
 			v1UsersGroup.GET("/avatar", v1.GetUserAvatar)
 
 			v1UsersGroup.DELETE("/:id", v1.DeleteUser)
-			v1UsersGroup.GET("/:username", v1.GetUserInfoByUsername)
+			// v1UsersGroup.GET("/:username", v1.GetUserInfoByUsername)
 			v1UsersGroup.DELETE("", v1.DeleteUserAll)
 		}
 	}

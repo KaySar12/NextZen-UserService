@@ -14,6 +14,7 @@ type Repository interface {
 	User() UserService
 	MessageBus() *message_bus.ClientWithResponses
 	Event() EventService
+	OMV() OMVService
 }
 
 func NewService(db *gorm.DB, RuntimePath string) Repository {
@@ -27,6 +28,7 @@ func NewService(db *gorm.DB, RuntimePath string) Repository {
 		gateway: gatewayManagement,
 		user:    NewUserService(db),
 		event:   NewEventService(db),
+		omv:     NewOMVService(),
 	}
 }
 
@@ -34,8 +36,12 @@ type store struct {
 	gateway external.ManagementService
 	user    UserService
 	event   EventService
+	omv     OMVService
 }
 
+func (c *store) OMV() OMVService {
+	return c.omv
+}
 func (c *store) Event() EventService {
 	return c.event
 }
