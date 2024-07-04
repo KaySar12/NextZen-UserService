@@ -1,17 +1,14 @@
 package v1
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/json"
 	json2 "encoding/json"
-	"fmt"
 	"image"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	url2 "net/url"
@@ -148,9 +145,7 @@ func PostUserLogin(c *gin.Context) {
 
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-
 	username := json["username"]
-
 	password := json["password"]
 	// check params is empty
 	if len(username) == 0 || len(password) == 0 {
@@ -206,6 +201,14 @@ func PostUserLogin(c *gin.Context) {
 			Data:    data,
 		})
 }
+
+// @Summary login user to openmediavault
+// @Produce  application/json
+// @Tags user
+// @Param username password
+// @Security SessionID
+// @Success 200 {string} string "ok"
+// @Router /users/omvLogin [post]
 func PostOMVLogin(c *gin.Context) {
 	if !limiter.Allow() {
 		c.JSON(common_err.TOO_MANY_REQUEST,
@@ -222,14 +225,13 @@ func PostOMVLogin(c *gin.Context) {
 	username := json["username"]
 
 	password := json["password"]
-	res := LoginSession(username, password)
+	res := service.MyService.OMV().LoginSession(username, password)
 	var resData OMVLogin
 	err := json2.Unmarshal([]byte(res), &resData)
 
 	if err != nil {
-		// Handle the error, for example, log it or return it
 		log.Printf("Error getting user: %v", err)
-		return // or handle it in a way that fits your application's error handling strategy
+		return
 	}
 
 	if !resData.Response.Authenticated {
@@ -238,8 +240,7 @@ func PostOMVLogin(c *gin.Context) {
 		return
 	}
 
-	getUser, err := GetOMVUser(username, resData.Response.SessionID)
-
+	getUser, err := service.MyService.OMV().GetUser(username, resData.Response.SessionID)
 	if err != nil {
 		// Handle the error, for example, log it or return it
 		log.Printf("Error getting user: %v", err)
@@ -262,14 +263,11 @@ func PostOMVLogin(c *gin.Context) {
 				Message: common_err.GetMsg(common_err.USER_NOT_EXIST_OR_PWD_INVALID)})
 		return
 	}
-	c.SetCookie(
-		"sessionID",
-		resData.Response.SessionID,
-		3600,
-		"/",
-		"",
-		false,
-		true)
+	// cookie_value, err := c.Cookie("sessionID")
+	// decrypt := encryption.Decrypt(cookie_value)
+	// fmt.Printf(decrypt)
+	sessionId := encryption.Encrypt(resData.Response.SessionID)
+	c.SetCookie("sessionID", sessionId, 3600, "/", "", false, true)
 	c.JSON(common_err.SUCCESS,
 		model.Result{
 			Success: common_err.SUCCESS,
@@ -285,67 +283,6 @@ func isEmpty(obj interface{}) bool {
 		return true
 	}
 	return false
-}
-
-func GetOMVUser(username string, sessionID string) (string, error) {
-	// Prepare the RPC request
-	postBody, _ := json.Marshal(map[string]interface{}{
-		"service": "UserMgmt",
-		"method":  "getUser",
-		"params": map[string]string{
-			"name": username,
-		},
-	})
-	responseBody := bytes.NewBuffer(postBody)
-
-	// Create HTTP request and set session ID header
-	req, err := http.NewRequest("POST", "http://10.0.0.4:1081/rpc.php", responseBody)
-	if err != nil {
-		return "", fmt.Errorf("error creating request: %v", err)
-	}
-	req.Header.Set("X-OPENMEDIAVAULT-SESSIONID", sessionID) // Set session ID header
-
-	// Send the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("error making request: %v", err)
-	}
-	defer resp.Body.Close() // Ensure the response body is closed
-
-	// Check for HTTP errors
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP error: %s", resp.Status)
-	}
-
-	// Read the response body
-	responseData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("error reading response body: %v", err)
-	}
-
-	return string(responseData), nil
-}
-func LoginSession(username string, password string) string {
-	postBody, _ := json.Marshal(map[string]interface{}{
-		"service": "session",
-		"method":  "login",
-		"params": map[string]string{
-			"username": username,
-			"password": password,
-		},
-	})
-	responseBody := bytes.NewBuffer(postBody)
-	response, err := http.Post("http://10.0.0.4:1081/rpc.php", "application/json", responseBody)
-	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
-	}
-	responseData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(responseData)
 }
 
 // @Summary edit user head

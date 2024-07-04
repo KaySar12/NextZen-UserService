@@ -10,6 +10,8 @@ type APPModel struct {
 	LogFileExt   string
 	UserDataPath string
 	DBPath       string
+	OMVServer    string
+	SecretKey    string
 }
 
 type Result struct {

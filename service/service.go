@@ -39,9 +39,6 @@ type store struct {
 	omv     OMVService
 }
 
-func (c *store) OMV() OMVService {
-	return c.omv
-}
 func (c *store) Event() EventService {
 	return c.event
 }
@@ -51,6 +48,9 @@ func (c *store) Gateway() external.ManagementService {
 
 func (c *store) User() UserService {
 	return c.user
+}
+func (c *store) OMV() OMVService {
+	return c.omv
 }
 func (c *store) MessageBus() *message_bus.ClientWithResponses {
 	client, _ := message_bus.NewClientWithResponses("", func(c *message_bus.Client) error {
