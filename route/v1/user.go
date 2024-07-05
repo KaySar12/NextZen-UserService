@@ -51,26 +51,13 @@ type OMVLogin struct {
 	} `json:"response"`
 	Error interface{} `json:"error"`
 }
-type OMVGetUser struct {
+type OMVUser struct {
 	Response struct {
-		Name            string        `json:"name"`
-		UID             int           `json:"uid"`
-		Gid             int           `json:"gid"`
-		Comment         string        `json:"comment"`
-		Dir             string        `json:"dir"`
-		Shell           string        `json:"shell"`
-		Lastchanged     string        `json:"lastchanged"`
-		Minimum         string        `json:"minimum"`
-		Maximum         string        `json:"maximum"`
-		Warn            string        `json:"warn"`
-		Inactive        string        `json:"inactive"`
-		Expire          string        `json:"expire"`
-		Reserved        string        `json:"reserved"`
-		Groups          []string      `json:"groups"`
-		System          bool          `json:"system"`
-		Email           string        `json:"email"`
-		Disallowusermod bool          `json:"disallowusermod"`
-		Sshpubkeys      []interface{} `json:"sshpubkeys"`
+		Authenticated bool   `json:"authenticated"`
+		Username      string `json:"username"`
+		Permissions   struct {
+			Role string `json:"role"`
+		} `json:"permissions"`
 	} `json:"response"`
 	Error interface{} `json:"error"`
 }
@@ -221,11 +208,9 @@ func PostOMVLogin(c *gin.Context) {
 
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-
 	username := json["username"]
-
 	password := json["password"]
-	res := service.MyService.OMV().LoginSession(username, password)
+	res, cookies := service.MyService.OMV().LoginSession(username, password)
 	var resData OMVLogin
 	err := json2.Unmarshal([]byte(res), &resData)
 
@@ -240,14 +225,14 @@ func PostOMVLogin(c *gin.Context) {
 		return
 	}
 
-	getUser, err := service.MyService.OMV().GetUser(username, resData.Response.SessionID)
+	getUser, err := service.MyService.OMV().AuthUser(username, password, resData.Response.SessionID)
 	if err != nil {
 		// Handle the error, for example, log it or return it
 		log.Printf("Error getting user: %v", err)
 		return // or handle it in a way that fits your application's error handling strategy
 	}
 
-	var userData OMVGetUser
+	var userData OMVUser
 	err = json2.Unmarshal([]byte(getUser), &userData)
 
 	if err != nil {
@@ -266,8 +251,10 @@ func PostOMVLogin(c *gin.Context) {
 	// cookie_value, err := c.Cookie("sessionID")
 	// decrypt := encryption.Decrypt(cookie_value)
 	// fmt.Printf(decrypt)
-	sessionId := encryption.Encrypt(resData.Response.SessionID)
-	c.SetCookie("sessionID", sessionId, 3600, "/", "", false, true)
+	// sessionId := encryption.Encrypt(resData.Response.SessionID)
+	for _, cookie := range cookies {
+		c.SetCookie(cookie.Name, cookie.Value, 3600, "/", "", false, true)
+	}
 	c.JSON(common_err.SUCCESS,
 		model.Result{
 			Success: common_err.SUCCESS,
