@@ -28,6 +28,7 @@ func InitRouter() *gin.Engine {
 	r.POST("/v1/users/register", v1.PostUserRegister)
 	r.POST("/v1/users/login", v1.PostUserLogin)
 	r.POST("/v1/users/omvlogin", v1.PostOMVLogin)
+	r.POST("/v1/users/logout", v1.PostLogout)
 	r.GET("/v1/users/name", v1.GetUserAllUsername) // all/name
 	r.POST("/v1/users/refresh", v1.PostUserRefreshToken)
 	// No short-term modifications

@@ -99,7 +99,6 @@ func PostUserRegister(c *gin.Context) {
 	user.Username = username
 	user.Password = encryption.GetMD5ByStr(pwd)
 	user.Role = role
-	// user.Role = "user"
 	user = service.MyService.User().CreateUser(user)
 	if user.Id == 0 {
 		c.JSON(common_err.SERVICE_ERROR, model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
@@ -262,6 +261,18 @@ func PostOMVLogin(c *gin.Context) {
 			Data:    userData,
 		})
 
+}
+func PostLogout(c *gin.Context) {
+	cookies := c.Request.Cookies()
+	for _, cookie := range cookies {
+		// Set the cookie to expire immediately
+		c.SetCookie(cookie.Name, "", -1, "/", "", false, true)
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+		})
 }
 
 func isEmpty(obj interface{}) bool {

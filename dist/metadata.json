@@ -1,1 +1,1 @@
-{"project_name":"casaos-user-service","tag":"v1.0.0","previous_tag":"","version":"1.0.1","commit":"219fa12590c7ebbe57526514ffea6ac2b2e63641","date":"2024-07-05T17:28:10.805445951+07:00","runtime":{"goos":"linux","goarch":"amd64"}}
+{"project_name":"casaos-user-service","tag":"v1.0.0","previous_tag":"","version":"1.0.1","commit":"465e77832e1cc9c31bfae697a1afc19d1608de6a","date":"2024-07-10T11:01:06.016968262+07:00","runtime":{"goos":"linux","goarch":"amd64"}}
