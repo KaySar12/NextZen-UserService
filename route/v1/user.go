@@ -545,7 +545,12 @@ func GetUserInfoByUsername(c *gin.Context) {
 	}
 	user := service.MyService.User().GetUserInfoByUserName(username)
 	if user.Id == 0 {
-		c.JSON(common_err.USER_NOT_EXIST, model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
+		c.JSON(common_err.SUCCESS,
+			model.Result{
+				Success: common_err.SUCCESS,
+				Message: common_err.GetMsg(common_err.USER_NOT_EXIST),
+				Data:    nil,
+			})
 		return
 	}
 
