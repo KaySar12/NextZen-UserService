@@ -26,6 +26,21 @@ const (
 	Access_tokenScopes = "access_token.Scopes"
 )
 
+// Defines values for YSKCardCardType.
+const (
+	YSKCardCardTypeLongNotice  YSKCardCardType = "long-notice"
+	YSKCardCardTypeShortNotice YSKCardCardType = "short-notice"
+	YSKCardCardTypeTask        YSKCardCardType = "task"
+)
+
+// Defines values for YSKCardRenderType.
+const (
+	YSKCardRenderTypeIconTextNotice YSKCardRenderType = "icon-text-notice"
+	YSKCardRenderTypeListNotice     YSKCardRenderType = "list-notice"
+	YSKCardRenderTypeMarkdownNotice YSKCardRenderType = "markdown-notice"
+	YSKCardRenderTypeTask           YSKCardRenderType = "task"
+)
+
 // Action defines model for Action.
 type Action struct {
 	// Name action name
@@ -104,6 +119,69 @@ type PropertyType struct {
 	Name string `json:"name"`
 }
 
+// YSKCard defines model for YSKCard.
+type YSKCard struct {
+	CardType   YSKCardCardType   `json:"cardType"`
+	Content    YSKCardContent    `json:"content"`
+	Id         string            `json:"id"`
+	RenderType YSKCardRenderType `json:"renderType"`
+}
+
+// YSKCardCardType defines model for YSKCard.CardType.
+type YSKCardCardType string
+
+// YSKCardRenderType defines model for YSKCard.RenderType.
+type YSKCardRenderType string
+
+// YSKCardContent defines model for YSKCardContent.
+type YSKCardContent struct {
+	BodyIconWithText *YSKCardIconWithText   `json:"bodyIconWithText,omitempty"`
+	BodyList         *[]YSKCardListItem     `json:"bodyList,omitempty"`
+	BodyProgress     *YSKCardProgress       `json:"bodyProgress,omitempty"`
+	FooterActions    *[]YSKCardFooterAction `json:"footerActions,omitempty"`
+	TitleIcon        YSKCardIcon            `json:"titleIcon"`
+	TitleText        string                 `json:"titleText"`
+}
+
+// YSKCardFooterAction defines model for YSKCardFooterAction.
+type YSKCardFooterAction struct {
+	MessageBus YSKCardMessageBusAction `json:"messageBus"`
+	Side       string                  `json:"side"`
+	Style      string                  `json:"style"`
+	Text       string                  `json:"text"`
+}
+
+// YSKCardIcon defines model for YSKCardIcon.
+type YSKCardIcon = string
+
+// YSKCardIconWithText defines model for YSKCardIconWithText.
+type YSKCardIconWithText struct {
+	Description string      `json:"description"`
+	Icon        YSKCardIcon `json:"icon"`
+}
+
+// YSKCardList defines model for YSKCardList.
+type YSKCardList = []YSKCard
+
+// YSKCardListItem defines model for YSKCardListItem.
+type YSKCardListItem struct {
+	Description string      `json:"description"`
+	Icon        YSKCardIcon `json:"icon"`
+	RightText   string      `json:"rightText"`
+}
+
+// YSKCardMessageBusAction defines model for YSKCardMessageBusAction.
+type YSKCardMessageBusAction struct {
+	Key     string `json:"key"`
+	Payload string `json:"payload"`
+}
+
+// YSKCardProgress defines model for YSKCardProgress.
+type YSKCardProgress struct {
+	Label    string `json:"label"`
+	Progress int    `json:"progress"`
+}
+
 // ActionName defines model for ActionName.
 type ActionName = string
 
@@ -139,6 +217,14 @@ type ResponseBadRequest = BaseResponse
 
 // ResponseConflict defines model for ResponseConflict.
 type ResponseConflict = BaseResponse
+
+// ResponseGetYSKCardListOK defines model for ResponseGetYSKCardListOK.
+type ResponseGetYSKCardListOK struct {
+	Data *YSKCardList `json:"data,omitempty"`
+
+	// Message message returned by server side if there is any
+	Message *string `json:"message,omitempty"`
+}
 
 // ResponseInternalServerError defines model for ResponseInternalServerError.
 type ResponseInternalServerError = BaseResponse
@@ -326,6 +412,12 @@ type ClientInterface interface {
 
 	// PollSIO2 request
 	PollSIO2(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetYskCard request
+	GetYskCard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteYskCard request
+	DeleteYskCard(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) SubscribeActionWS(ctx context.Context, sourceId SourceID, params *SubscribeActionWSParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -558,6 +650,30 @@ func (c *Client) SubscribeSIO2(ctx context.Context, reqEditors ...RequestEditorF
 
 func (c *Client) PollSIO2(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPollSIO2Request(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetYskCard(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetYskCardRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteYskCard(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteYskCardRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1176,6 +1292,67 @@ func NewPollSIO2Request(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetYskCardRequest generates requests for GetYskCard
+func NewGetYskCardRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/ysk")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteYskCardRequest generates requests for DeleteYskCard
+func NewDeleteYskCardRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/ysk/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1274,6 +1451,12 @@ type ClientWithResponsesInterface interface {
 
 	// PollSIO2 request
 	PollSIO2WithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PollSIO2Response, error)
+
+	// GetYskCard request
+	GetYskCardWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetYskCardResponse, error)
+
+	// DeleteYskCard request
+	DeleteYskCardWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteYskCardResponse, error)
 }
 
 type SubscribeActionWSResponse struct {
@@ -1635,6 +1818,57 @@ func (r PollSIO2Response) StatusCode() int {
 	return 0
 }
 
+type GetYskCardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Data *YSKCardList `json:"data,omitempty"`
+
+		// Message message returned by server side if there is any
+		Message *string `json:"message,omitempty"`
+	}
+	JSON500 *BaseResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetYskCardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetYskCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeleteYskCardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *BaseResponse
+	JSON500      *BaseResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteYskCardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteYskCardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // SubscribeActionWSWithResponse request returning *SubscribeActionWSResponse
 func (c *ClientWithResponses) SubscribeActionWSWithResponse(ctx context.Context, sourceId SourceID, params *SubscribeActionWSParams, reqEditors ...RequestEditorFn) (*SubscribeActionWSResponse, error) {
 	rsp, err := c.SubscribeActionWS(ctx, sourceId, params, reqEditors...)
@@ -1809,6 +2043,24 @@ func (c *ClientWithResponses) PollSIO2WithResponse(ctx context.Context, reqEdito
 		return nil, err
 	}
 	return ParsePollSIO2Response(rsp)
+}
+
+// GetYskCardWithResponse request returning *GetYskCardResponse
+func (c *ClientWithResponses) GetYskCardWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetYskCardResponse, error) {
+	rsp, err := c.GetYskCard(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetYskCardResponse(rsp)
+}
+
+// DeleteYskCardWithResponse request returning *DeleteYskCardResponse
+func (c *ClientWithResponses) DeleteYskCardWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteYskCardResponse, error) {
+	rsp, err := c.DeleteYskCard(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteYskCardResponse(rsp)
 }
 
 // ParseSubscribeActionWSResponse parses an HTTP response from a SubscribeActionWSWithResponse call
@@ -2258,6 +2510,77 @@ func ParsePollSIO2Response(rsp *http.Response) (*PollSIO2Response, error) {
 	return response, nil
 }
 
+// ParseGetYskCardResponse parses an HTTP response from a GetYskCardWithResponse call
+func ParseGetYskCardResponse(rsp *http.Response) (*GetYskCardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetYskCardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Data *YSKCardList `json:"data,omitempty"`
+
+			// Message message returned by server side if there is any
+			Message *string `json:"message,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest BaseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteYskCardResponse parses an HTTP response from a DeleteYskCardWithResponse call
+func ParseDeleteYskCardResponse(rsp *http.Response) (*DeleteYskCardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteYskCardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BaseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest BaseResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Subscribe to actions by source ID (WebSocket)
@@ -2308,6 +2631,12 @@ type ServerInterface interface {
 	// Poll events and actions (SocketIO)
 	// (POST /socket.io/)
 	PollSIO2(ctx echo.Context) error
+
+	// (GET /ysk)
+	GetYskCard(ctx echo.Context) error
+
+	// (DELETE /ysk/{id})
+	DeleteYskCard(ctx echo.Context, id string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -2597,6 +2926,35 @@ func (w *ServerInterfaceWrapper) PollSIO2(ctx echo.Context) error {
 	return err
 }
 
+// GetYskCard converts echo context to params.
+func (w *ServerInterfaceWrapper) GetYskCard(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(Access_tokenScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetYskCard(ctx)
+	return err
+}
+
+// DeleteYskCard converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteYskCard(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(Access_tokenScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.DeleteYskCard(ctx, id)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -2641,59 +2999,71 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/socket.io", wrapper.PollSIO)
 	router.GET(baseURL+"/socket.io/", wrapper.SubscribeSIO2)
 	router.POST(baseURL+"/socket.io/", wrapper.PollSIO2)
+	router.GET(baseURL+"/ysk", wrapper.GetYskCard)
+	router.DELETE(baseURL+"/ysk/:id", wrapper.DeleteYskCard)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"V+ur9f8DAAD//z3VnfHySgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

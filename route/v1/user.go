@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	json2 "encoding/json"
@@ -30,37 +31,23 @@ import (
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/encryption"
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/file"
+	"github.com/IceWhaleTech/CasaOS-UserService/service"
 	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/gin-gonic/gin"
 	uuid "github.com/satori/go.uuid"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
-
-	"github.com/IceWhaleTech/CasaOS-UserService/service"
-	"github.com/gin-gonic/gin"
 )
 
-type OMVLogin struct {
-	Response struct {
-		Authenticated bool   `json:"authenticated"`
-		Username      string `json:"username"`
-		Permissions   struct {
-			Role string `json:"role"`
-		} `json:"permissions"`
-		SessionID string `json:"sessionid"`
-	} `json:"response"`
-	Error interface{} `json:"error"`
-}
-type OMVUser struct {
-	Response struct {
-		Authenticated bool   `json:"authenticated"`
-		Username      string `json:"username"`
-		Permissions   struct {
-			Role string `json:"role"`
-		} `json:"permissions"`
-	} `json:"response"`
-	Error interface{} `json:"error"`
-}
+var (
+	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
+	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
+	authURL      = "https://auth.c14soft.com/application/o/nextzenos-oidc/" // e.g., "https://authentik.example.com/"
+	callbackURL  = "http://172.26.157.79:81/v1/users/oidc/callback"         // e.g., "http://localhost:8080/callback"
+)
 
 // @Summary register user
 // @Router /user/register/ [post]
@@ -187,6 +174,89 @@ func PostUserLogin(c *gin.Context) {
 			Data:    data,
 		})
 }
+func randString(nByte int) (string, error) {
+	b := make([]byte, nByte)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+var oauth2Config oauth2.Config
+var providerOIDC *oidc.Provider
+
+// Use an init function to initialize the oauth2Config variable.
+func OIDC() {
+	ctx := context.Background()
+	provider, err := oidc.NewProvider(ctx, authURL)
+	if err != nil {
+		log.Fatalf("Error creating OIDC provider: %v", err) // This will print the error and stop execution
+	}
+	providerOIDC = provider
+	oauth2Config = oauth2.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  callbackURL,
+		Endpoint:     provider.Endpoint(),
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+	}
+}
+func OIDCLogin(c *gin.Context) {
+	state, err := randString(16)
+	if err != nil {
+		return
+	}
+	w := c.Writer
+	r := c.Request
+	setCallbackCookie(w, r, "state", state)
+	c.Redirect(http.StatusFound, oauth2Config.AuthCodeURL(state))
+}
+func OIDCCallback(c *gin.Context) {
+	w := c.Writer
+	r := c.Request
+	state, err := r.Cookie("state")
+	if err != nil {
+		http.Error(w, "state not found", http.StatusBadRequest)
+		return
+	}
+	if r.URL.Query().Get("state") != state.Value {
+		http.Error(w, "state did not match", http.StatusBadRequest)
+		return
+	}
+	oauth2Token, err := oauth2Config.Exchange(context.Background(), r.URL.Query().Get("code"))
+	if err != nil {
+		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	userInfo, err := providerOIDC.UserInfo(context.Background(), oauth2.StaticTokenSource(oauth2Token))
+	if err != nil {
+		http.Error(w, "Failed to get userinfo: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp := struct {
+		OAuth2Token *oauth2.Token
+		UserInfo    *oidc.UserInfo
+	}{oauth2Token, userInfo}
+	data, err := json.MarshalIndent(resp, "", "    ")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(data)
+}
+func OIDCProfile(c *gin.Context) {
+
+}
+func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value string) {
+	c := &http.Cookie{
+		Name:     name,
+		Value:    value,
+		MaxAge:   int(time.Hour.Seconds()),
+		Secure:   r.TLS != nil,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, c)
+}
 
 // @Summary login user to openmediavault
 // @Produce  application/json
@@ -210,7 +280,7 @@ func PostOMVLogin(c *gin.Context) {
 	username := json["username"]
 	password := json["password"]
 	res, cookies := service.MyService.OMV().LoginSession(username, password)
-	var resData OMVLogin
+	var resData model2.OMVLogin
 	err := json2.Unmarshal([]byte(res), &resData)
 
 	if err != nil {
@@ -231,7 +301,7 @@ func PostOMVLogin(c *gin.Context) {
 		return // or handle it in a way that fits your application's error handling strategy
 	}
 
-	var userData OMVUser
+	var userData model2.OMVUser
 	err = json2.Unmarshal([]byte(getUser), &userData)
 
 	if err != nil {

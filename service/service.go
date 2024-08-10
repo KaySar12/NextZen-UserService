@@ -15,6 +15,7 @@ type Repository interface {
 	MessageBus() *message_bus.ClientWithResponses
 	Event() EventService
 	OMV() OMVService
+	Authentik() AuthentikService
 }
 
 func NewService(db *gorm.DB, RuntimePath string) Repository {
@@ -25,18 +26,20 @@ func NewService(db *gorm.DB, RuntimePath string) Repository {
 	}
 
 	return &store{
-		gateway: gatewayManagement,
-		user:    NewUserService(db),
-		event:   NewEventService(db),
-		omv:     NewOMVService(),
+		gateway:   gatewayManagement,
+		user:      NewUserService(db),
+		event:     NewEventService(db),
+		omv:       NewOMVService(),
+		authentik: NewAuthentikService(),
 	}
 }
 
 type store struct {
-	gateway external.ManagementService
-	user    UserService
-	event   EventService
-	omv     OMVService
+	gateway   external.ManagementService
+	user      UserService
+	event     EventService
+	omv       OMVService
+	authentik AuthentikService
 }
 
 func (c *store) Event() EventService {
@@ -51,6 +54,9 @@ func (c *store) User() UserService {
 }
 func (c *store) OMV() OMVService {
 	return c.omv
+}
+func (c *store) Authentik() AuthentikService {
+	return c.authentik
 }
 func (c *store) MessageBus() *message_bus.ClientWithResponses {
 	client, _ := message_bus.NewClientWithResponses("", func(c *message_bus.Client) error {

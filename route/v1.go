@@ -24,7 +24,7 @@ func InitRouter() *gin.Engine {
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
-
+	v1.OIDC()
 	r.POST("/v1/users/register", v1.PostUserRegister)
 	r.POST("/v1/users/login", v1.PostUserLogin)
 	r.POST("/v1/users/omvlogin", v1.PostOMVLogin)
@@ -35,7 +35,9 @@ func InitRouter() *gin.Engine {
 	r.GET("/v1/users/image", v1.GetUserImage)
 	r.GET("/v1/users/:username", v1.GetUserInfoByUsername)
 	r.GET("/v1/users/status", v1.GetUserStatus) // init/check
-
+	r.GET("/v1/users/oidc/login", v1.OIDCLogin)
+	r.GET("/v1/users/oidc/callback", v1.OIDCCallback)
+	r.GET("/v1/users/oidc/profile")
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(

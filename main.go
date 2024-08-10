@@ -48,6 +48,7 @@ var (
 )
 
 func init() {
+
 	configFlag := flag.String("c", "", "config address")
 	dbFlag := flag.String("db", "", "db path")
 	resetUserFlag := flag.Bool("ru", false, "reset user")
