@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	json2 "encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -43,10 +44,11 @@ import (
 )
 
 var (
+	baseURL      = "https://auth.c14soft.com"
 	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL      = "https://auth.c14soft.com/application/o/nextzenos-oidc/" // e.g., "https://authentik.example.com/"
-	callbackURL  = "http://172.26.157.79:81/v1/users/oidc/callback"         // e.g., "http://localhost:8080/callback"
+	authURL      = "https://auth.c14soft.com/application/o/nextzenos-oidc/" //
+	callbackURL  = "http://172.26.157.79:8080/v1/users/oidc/callback"
 )
 
 // @Summary register user
@@ -198,18 +200,23 @@ func OIDC() {
 		ClientSecret: clientSecret,
 		RedirectURL:  callbackURL,
 		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "goauthentik.io/api", "offline_access"},
 	}
 }
 func OIDCLogin(c *gin.Context) {
-	state, err := randString(16)
-	if err != nil {
-		return
-	}
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	state := json["state"]
 	w := c.Writer
 	r := c.Request
 	setCallbackCookie(w, r, "state", state)
-	c.Redirect(http.StatusFound, oauth2Config.AuthCodeURL(state))
+	// c.Redirect(http.StatusFound, oauth2Config.AuthCodeURL(state))
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    oauth2Config.AuthCodeURL(state),
+		})
 }
 func OIDCCallback(c *gin.Context) {
 	w := c.Writer
@@ -237,12 +244,29 @@ func OIDCCallback(c *gin.Context) {
 		OAuth2Token *oauth2.Token
 		UserInfo    *oidc.UserInfo
 	}{oauth2Token, userInfo}
-	data, err := json.MarshalIndent(resp, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// data, err := json.MarshalIndent(resp, "", "    ")
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+	//Save Userinfo and access token logic
+	service.MyService.Authentik().GetUserInfo(resp.OAuth2Token.AccessToken)
+	fmt.Println(resp)
+	oldUser := service.MyService.User().GetUserInfoByUserName(resp.UserInfo.Email)
+	if oldUser.Id > 0 {
+		service.MyService.User().UpdateUser(oldUser)
+	} else {
+		user := model2.UserDBModel{}
+		user.Username = resp.UserInfo.Email
+		user.Password = encryption.GetMD5ByStr("123")
+		user.Role = "admin"
+		user = service.MyService.User().CreateUser(user)
+		if user.Id == 0 {
+			c.JSON(common_err.SERVICE_ERROR, model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
 	}
-	w.Write(data)
+	c.Redirect(http.StatusFound, state.Value)
 }
 func OIDCProfile(c *gin.Context) {
 
