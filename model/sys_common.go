@@ -5,13 +5,14 @@ type CommonModel struct {
 }
 
 type APPModel struct {
-	LogPath      string
-	LogSaveName  string
-	LogFileExt   string
-	UserDataPath string
-	DBPath       string
-	OMVServer    string
-	SecretKey    string
+	LogPath         string
+	LogSaveName     string
+	LogFileExt      string
+	UserDataPath    string
+	DBPath          string
+	OMVServer       string
+	AuthentikServer string
+	SecretKey       string
 }
 
 type Result struct {

@@ -30,7 +30,7 @@ func NewService(db *gorm.DB, RuntimePath string) Repository {
 		user:      NewUserService(db),
 		event:     NewEventService(db),
 		omv:       NewOMVService(),
-		authentik: NewAuthentikService(),
+		authentik: NewAuthentikService(db),
 	}
 }
 

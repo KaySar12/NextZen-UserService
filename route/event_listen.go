@@ -63,7 +63,7 @@ func EventListen() {
 			if event.Name == "local-storage:raid_status" {
 				continue
 			}
-			service.MyService.Event().CreateEvemt(model)
+			service.MyService.Event().CreateEvent(model)
 			// logger.Info("info", zap.Any("写入信息1", model))
 			// output, err := json.MarshalIndent(event, "", "  ")
 			// if err != nil {

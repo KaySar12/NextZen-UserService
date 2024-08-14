@@ -7,20 +7,38 @@ import (
 	"net/http"
 
 	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	"gorm.io/gorm"
 )
 
 type AuthentikService interface {
 	GetUserInfo(accessToken string, baseURL string) (model2.AuthentikUser, error)
 	GetUserApp(accessToken string, baseURL string) (model2.AuthentikApplication, error)
+	CreateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
+	UpdateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
+	GetCredential(id int) model2.AuthentikCredentialsDBModel
 }
 
 type authentikService struct {
+	db *gorm.DB
 }
 
 var (
 	APICorePrefix = "/api/v3/core"
 )
 
+func (a *authentikService) CreateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel {
+	a.db.Create(&m)
+	return m
+}
+func (a *authentikService) UpdateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel {
+	a.db.Model(&m).Where("id = ?", m.Id).Updates(m)
+	return m
+}
+func (a *authentikService) GetCredential(id int) model2.AuthentikCredentialsDBModel {
+	var m model2.AuthentikCredentialsDBModel
+	a.db.Limit(1).Where("id = ?", id).First(&m)
+	return m
+}
 func (a *authentikService) GetUserApp(accessToken string, baseURL string) (model2.AuthentikApplication, error) {
 	bearer := "Bearer " + accessToken
 	path := baseURL + APICorePrefix + "/applications/"
@@ -93,6 +111,8 @@ func (a *authentikService) GetUserInfo(accessToken string, baseURL string) (mode
 
 	return user, nil
 }
-func NewAuthentikService() AuthentikService {
-	return &authentikService{}
+func NewAuthentikService(db *gorm.DB) AuthentikService {
+	return &authentikService{
+		db: db,
+	}
 }

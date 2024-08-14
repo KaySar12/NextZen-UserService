@@ -46,7 +46,7 @@ var (
 	baseURL      = "https://auth.c14soft.com"
 	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL      = "https://auth.c14soft.com/application/o/nextzenos-oidc/" //
+	authURL      = "https://auth.c14soft.com/application/o/nextzenos-oidc/"
 	callbackURL  = "http://172.26.157.79:8080/v1/users/oidc/callback"
 )
 
@@ -331,7 +331,7 @@ func generateTokens(user model2.UserDBModel) (system_model.VerifyInformation, er
 	return system_model.VerifyInformation{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(3 * time.Hour).Unix(),
+		ExpiresAt:    time.Now().Add(3 * time.Hour * time.Duration(1)).Unix(),
 	}, nil
 }
 

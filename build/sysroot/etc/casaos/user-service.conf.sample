@@ -9,3 +9,4 @@ DBPath     = /var/lib/casaos/db
 UserDataPath = /var/lib/casaos
 OMVServer = http://10.0.0.4:1081/rpc.php
 SecretKey = N1PCdw3M2B1TfJhoaY2mL736p2vCUc47
+AuthentikServer = https://auth.c14soft.com 

@@ -8,7 +8,7 @@ import (
 )
 
 type EventService interface {
-	CreateEvemt(m model.EventModel) model.EventModel
+	CreateEvent(m model.EventModel) model.EventModel
 	GetEvents() (list []model.EventModel)
 	GetEventByUUID(uuid string) (m model.EventModel)
 	DeleteEvent(uuid string)
@@ -19,7 +19,7 @@ type eventService struct {
 	db *gorm.DB
 }
 
-func (e *eventService) CreateEvemt(m model.EventModel) model.EventModel {
+func (e *eventService) CreateEvent(m model.EventModel) model.EventModel {
 	e.db.Create(&m)
 	return m
 }
