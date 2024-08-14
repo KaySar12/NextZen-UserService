@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	json2 "encoding/json"
-	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -221,6 +220,8 @@ func OIDCLogin(c *gin.Context) {
 func OIDCCallback(c *gin.Context) {
 	w := c.Writer
 	r := c.Request
+
+	// Verify state cookie
 	state, err := r.Cookie("state")
 	if err != nil {
 		http.Error(w, "state not found", http.StatusBadRequest)
@@ -230,47 +231,110 @@ func OIDCCallback(c *gin.Context) {
 		http.Error(w, "state did not match", http.StatusBadRequest)
 		return
 	}
+
+	// Exchange authorization code for token
 	oauth2Token, err := oauth2Config.Exchange(context.Background(), r.URL.Query().Get("code"))
 	if err != nil {
 		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	userInfo, err := providerOIDC.UserInfo(context.Background(), oauth2.StaticTokenSource(oauth2Token))
-	if err != nil {
-		http.Error(w, "Failed to get userinfo: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp := struct {
-		OAuth2Token *oauth2.Token
-		UserInfo    *oidc.UserInfo
-	}{oauth2Token, userInfo}
-	// data, err := json.MarshalIndent(resp, "", "    ")
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-	//Save Userinfo and access token logic
-	service.MyService.Authentik().GetUserInfo(resp.OAuth2Token.AccessToken)
-	fmt.Println(resp)
-	oldUser := service.MyService.User().GetUserInfoByUserName(resp.UserInfo.Email)
-	if oldUser.Id > 0 {
-		service.MyService.User().UpdateUser(oldUser)
-	} else {
-		user := model2.UserDBModel{}
-		user.Username = resp.UserInfo.Email
-		user.Password = encryption.GetMD5ByStr("123")
-		user.Role = "admin"
-		user = service.MyService.User().CreateUser(user)
-		if user.Id == 0 {
-			c.JSON(common_err.SERVICE_ERROR, model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
-			return
-		}
-	}
+	expiryDuration := time.Until(oauth2Token.Expiry)
+	c.SetCookie("accessToken", oauth2Token.AccessToken, int(expiryDuration.Seconds()), "/", "", false, true)
+	c.SetCookie("refreshToken", oauth2Token.RefreshToken, int(expiryDuration.Seconds()), "/", "", false, true)
 	c.Redirect(http.StatusFound, state.Value)
 }
 func OIDCProfile(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	w := c.Writer
+	accessToken, err := c.Cookie("accessToken")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/#/oidc")
+	}
+	// r := c.Request
+	// Get Authentik user info
+	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, baseURL)
+	if err != nil {
+		http.Error(w, "Failed to get Authentik user info: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Handle user data in local database
+	user := service.MyService.User().GetUserInfoByUserName(authentikUser.User.Username)
+	if user.Id > 0 {
+		// Update existing user
+		user.Nickname = authentikUser.User.Username
+		user.Email = authentikUser.User.Email
+		user.Role = determineUserRole(authentikUser.User.IsSuperuser)
+		user.Avatar = authentikUser.User.Avatar
+		service.MyService.User().UpdateUser(user)
+	} else {
+		// Create new user
+		user = model2.UserDBModel{
+			Username: authentikUser.User.Username,
+			Password: hashPassword(),
+			Role:     determineUserRole(authentikUser.User.IsSuperuser),
+			Avatar:   authentikUser.User.Avatar,
+		}
+		user = service.MyService.User().CreateUser(user)
+		if user.Id == 0 {
+			c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
+	}
+
+	// Generate tokens
+	token, err := generateTokens(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.SERVICE_ERROR, Message: err.Error()})
+		return
+	}
+	data := make(map[string]interface{}, 2)
+	data["token"] = token
+	data["user"] = user
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    data,
+		})
 
 }
+func determineUserRole(isSuperuser bool) string {
+	if isSuperuser {
+		return "admin"
+	}
+	return "user"
+}
+
+func hashPassword() string {
+	generatePassword, err := randString(16)
+	if err != nil {
+		return ""
+	}
+	return encryption.GetMD5ByStr(generatePassword)
+}
+
+func generateTokens(user model2.UserDBModel) (system_model.VerifyInformation, error) {
+	privateKey, _ := service.MyService.User().GetKeyPair()
+
+	accessToken, err := jwt.GetAccessToken(user.Username, privateKey, user.Id)
+	if err != nil {
+		return system_model.VerifyInformation{}, err
+	}
+
+	refreshToken, err := jwt.GetRefreshToken(user.Username, privateKey, user.Id)
+	if err != nil {
+		return system_model.VerifyInformation{}, err
+	}
+
+	return system_model.VerifyInformation{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    time.Now().Add(3 * time.Hour).Unix(),
+	}, nil
+}
+
 func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value string) {
 	c := &http.Cookie{
 		Name:     name,
@@ -324,7 +388,6 @@ func PostOMVLogin(c *gin.Context) {
 		log.Printf("Error getting user: %v", err)
 		return // or handle it in a way that fits your application's error handling strategy
 	}
-
 	var userData model2.OMVUser
 	err = json2.Unmarshal([]byte(getUser), &userData)
 

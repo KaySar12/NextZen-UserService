@@ -1,9 +1,8 @@
 package service
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 
@@ -11,38 +10,88 @@ import (
 )
 
 type AuthentikService interface {
-	HelloWorld() string
-	GetUserInfo(accessToken string) model2.AuthentikUser
+	GetUserInfo(accessToken string, baseURL string) (model2.AuthentikUser, error)
+	GetUserApp(accessToken string, baseURL string) (model2.AuthentikApplication, error)
 }
 
 type authentikService struct {
 }
 
-func (a *authentikService) GetUserInfo(accessToken string) model2.AuthentikUser {
+var (
+	APICorePrefix = "/api/v3/core"
+)
+
+func (a *authentikService) GetUserApp(accessToken string, baseURL string) (model2.AuthentikApplication, error) {
 	bearer := "Bearer " + accessToken
-	req, err := http.NewRequest("GET", "", bytes.NewBuffer(nil))
+	path := baseURL + APICorePrefix + "/applications/"
+	req, err := http.NewRequest("GET", path, nil)
+	if err != nil {
+		return model2.AuthentikApplication{}, err
+	}
 	req.Header.Set("Authorization", bearer)
 	req.Header.Add("Accept", "application/json")
-	client := &http.Client{}
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		for key, val := range via[0].Header {
-			req.Header[key] = val
-		}
-		return err
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Always follow redirects
+			return nil
+		},
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error on response.\n[ERRO] -", err)
-	} else {
-		defer resp.Body.Close()
-		data, _ := io.ReadAll(resp.Body)
-		fmt.Println(string(data))
+		log.Println("Error on request:", err)
+		return model2.AuthentikApplication{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Println("HTTP error:", resp.Status)
+		return model2.AuthentikApplication{}, fmt.Errorf("HTTP error: %s", resp.Status)
 	}
 
-	return model2.AuthentikUser{}
+	var app model2.AuthentikApplication
+	if err := json.NewDecoder(resp.Body).Decode(&app); err != nil {
+		log.Println("Error decoding response:", err)
+		return model2.AuthentikApplication{}, err
+	}
+
+	return app, nil
+
 }
-func (a *authentikService) HelloWorld() string {
-	return "Hello World!"
+func (a *authentikService) GetUserInfo(accessToken string, baseURL string) (model2.AuthentikUser, error) {
+	bearer := "Bearer " + accessToken
+	path := baseURL + APICorePrefix + "/users/me/"
+	req, err := http.NewRequest("GET", path, nil) // No need for bytes.NewBuffer(nil) for GET requests without a body
+	if err != nil {
+		return model2.AuthentikUser{}, err
+	}
+	req.Header.Set("Authorization", bearer)
+	req.Header.Add("Accept", "application/json")
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Always follow redirects
+			return nil
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("Error on request:", err)
+		return model2.AuthentikUser{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Println("HTTP error:", resp.Status)
+		return model2.AuthentikUser{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+
+	var user model2.AuthentikUser
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		log.Println("Error decoding response:", err)
+		return model2.AuthentikUser{}, err
+	}
+
+	return user, nil
 }
 func NewAuthentikService() AuthentikService {
 	return &authentikService{}

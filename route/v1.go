@@ -37,6 +37,7 @@ func InitRouter() *gin.Engine {
 	r.GET("/v1/users/status", v1.GetUserStatus) // init/check
 	r.POST("/v1/users/oidc/login", v1.OIDCLogin)
 	r.GET("/v1/users/oidc/callback", v1.OIDCCallback)
+	r.GET("/v1/users/oidc/profile", v1.OIDCProfile)
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(
