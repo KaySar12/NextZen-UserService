@@ -1,10 +1,13 @@
 package service
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 
 	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
 	"gorm.io/gorm"
@@ -16,6 +19,7 @@ type AuthentikService interface {
 	CreateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
 	UpdateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
 	GetCredential(id int) model2.AuthentikCredentialsDBModel
+	ValidateToken(clientId string, clientSecret string, accessToken string, baseURL string) (model2.AuthentikToken, error)
 }
 
 type authentikService struct {
@@ -38,6 +42,37 @@ func (a *authentikService) GetCredential(id int) model2.AuthentikCredentialsDBMo
 	var m model2.AuthentikCredentialsDBModel
 	a.db.Limit(1).Where("id = ?", id).First(&m)
 	return m
+}
+func (a *authentikService) ValidateToken(clientId string, clientSecret string, accessToken string, baseURL string) (model2.AuthentikToken, error) {
+	auth := clientId + ":" + clientSecret
+	basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+	path := baseURL + "/application/o/introspect/"
+	formData := url.Values{}
+	formData.Set("token", accessToken)
+	responseBody := strings.NewReader(formData.Encode())
+	req, err := http.NewRequest("POST", path, responseBody)
+	if err != nil {
+		return model2.AuthentikToken{}, fmt.Errorf("error creating request: %v", err)
+	}
+	req.Header.Set("Authorization", basicAuth)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.AuthentikToken{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Println("HTTP error:", resp.Status)
+		return model2.AuthentikToken{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var token model2.AuthentikToken
+	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+		log.Println("Error decoding response:", err)
+		return model2.AuthentikToken{}, err
+	}
+	return token, nil
 }
 func (a *authentikService) GetUserApp(accessToken string, baseURL string) (model2.AuthentikApplication, error) {
 	bearer := "Bearer " + accessToken

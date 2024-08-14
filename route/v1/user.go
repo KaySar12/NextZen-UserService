@@ -43,11 +43,12 @@ import (
 )
 
 var (
-	baseURL      = "https://auth.c14soft.com"
+	baseURL      = "http://10.0.0.26:9000"
 	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL      = "https://auth.c14soft.com/application/o/nextzenos-oidc/"
-	callbackURL  = "http://172.26.157.79:8080/v1/users/oidc/callback"
+	authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
+	// callbackURL  = "http://nextzenos.local/v1/users/oidc/callback"
+	callbackURL = "http://172.26.157.79:8080/v1/users/oidc/callback"
 )
 
 // @Summary register user
@@ -184,7 +185,6 @@ func randString(nByte int) (string, error) {
 }
 
 var oauth2Config oauth2.Config
-var providerOIDC *oidc.Provider
 
 // Use an init function to initialize the oauth2Config variable.
 func OIDC() {
@@ -193,13 +193,13 @@ func OIDC() {
 	if err != nil {
 		log.Fatalf("Error creating OIDC provider: %v", err) // This will print the error and stop execution
 	}
-	providerOIDC = provider
 	oauth2Config = oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  callbackURL,
 		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "goauthentik.io/api", "offline_access"},
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "goauthentik.io/api"},
+		//add offline access for refresh token
 	}
 }
 func OIDCLogin(c *gin.Context) {
@@ -240,13 +240,47 @@ func OIDCCallback(c *gin.Context) {
 	}
 	expiryDuration := time.Until(oauth2Token.Expiry)
 	c.SetCookie("accessToken", oauth2Token.AccessToken, int(expiryDuration.Seconds()), "/", "", false, true)
-	c.SetCookie("refreshToken", oauth2Token.RefreshToken, int(expiryDuration.Seconds()), "/", "", false, true)
+	// c.SetCookie("refreshToken", oauth2Token.RefreshToken, int(expiryDuration.Seconds()), "/", "", false, true)
 	c.Redirect(http.StatusFound, state.Value)
+}
+func OIDCUserInfo(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	accessToken, err := c.Cookie("accessToken")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/#/oidc")
+	}
+	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, baseURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
+		return
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    authentikUser,
+		})
+}
+func OIDCValidateToken(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	accessToken := json["authentikToken"]
+	var validateToken model2.AuthentikToken
+	validateToken, err := service.MyService.Authentik().ValidateToken(clientID, clientSecret, accessToken, baseURL)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
+		return
+	}
+	if !validateToken.Active {
+		c.JSON(http.StatusUnauthorized, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
+		return
+	}
+	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 }
 func OIDCProfile(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-	w := c.Writer
 	accessToken, err := c.Cookie("accessToken")
 	if err != nil {
 		c.Redirect(http.StatusFound, "/#/oidc")
@@ -255,7 +289,7 @@ func OIDCProfile(c *gin.Context) {
 	// Get Authentik user info
 	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, baseURL)
 	if err != nil {
-		http.Error(w, "Failed to get Authentik user info: "+err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
 	}
 
@@ -292,6 +326,7 @@ func OIDCProfile(c *gin.Context) {
 	data := make(map[string]interface{}, 2)
 	data["token"] = token
 	data["user"] = user
+	data["authToken"] = accessToken
 	c.JSON(common_err.SUCCESS,
 		model.Result{
 			Success: common_err.SUCCESS,
