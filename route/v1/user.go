@@ -7,11 +7,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	json2 "encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	url2 "net/url"
 	"os"
 	"path"
@@ -43,7 +45,7 @@ import (
 )
 
 var (
-	baseURL      = "http://10.0.0.26:9000"
+	authServer   = "http://10.0.0.26:9000"
 	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
 	authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
@@ -206,9 +208,9 @@ func OIDCLogin(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	state := json["state"]
-	w := c.Writer
-	r := c.Request
-	setCallbackCookie(w, r, "state", state)
+	// w := c.Writer
+	// r := c.Request
+	// setCallbackCookie(w, r, "state", state)
 	// c.Redirect(http.StatusFound, oauth2Config.AuthCodeURL(state))
 	c.JSON(common_err.SUCCESS,
 		model.Result{
@@ -222,12 +224,9 @@ func OIDCCallback(c *gin.Context) {
 	r := c.Request
 
 	// Verify state cookie
-	state, err := r.Cookie("state")
-	if err != nil {
-		http.Error(w, "state not found", http.StatusBadRequest)
-		return
-	}
-	if r.URL.Query().Get("state") != state.Value {
+	state := c.Query("state")
+
+	if r.URL.Query().Get("state") != state {
 		http.Error(w, "state did not match", http.StatusBadRequest)
 		return
 	}
@@ -241,7 +240,7 @@ func OIDCCallback(c *gin.Context) {
 	expiryDuration := time.Until(oauth2Token.Expiry)
 	c.SetCookie("accessToken", oauth2Token.AccessToken, int(expiryDuration.Seconds()), "/", "", false, true)
 	// c.SetCookie("refreshToken", oauth2Token.RefreshToken, int(expiryDuration.Seconds()), "/", "", false, true)
-	c.Redirect(http.StatusFound, state.Value)
+	c.Redirect(http.StatusFound, state)
 }
 func OIDCUserInfo(c *gin.Context) {
 	json := make(map[string]string)
@@ -250,7 +249,7 @@ func OIDCUserInfo(c *gin.Context) {
 	if err != nil {
 		c.Redirect(http.StatusFound, "/#/oidc")
 	}
-	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, baseURL)
+	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, authServer)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
@@ -267,7 +266,7 @@ func OIDCValidateToken(c *gin.Context) {
 	c.ShouldBind(&json)
 	accessToken := json["authentikToken"]
 	var validateToken model2.AuthentikToken
-	validateToken, err := service.MyService.Authentik().ValidateToken(clientID, clientSecret, accessToken, baseURL)
+	validateToken, err := service.MyService.Authentik().ValidateToken(clientID, clientSecret, accessToken, authServer)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
@@ -278,6 +277,23 @@ func OIDCValidateToken(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 }
+func OIDCLogout(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	accessToken := json["authentikToken"]
+	fmt.Println(accessToken)
+	flow := "/if/flow/default-authentication-flow/"
+	next := "next=/application/o/authorize/"
+	params := url.Values{}
+	params.Add("?client_id", clientID)
+	params.Add("redirect_uri", callbackURL)
+	params.Add("response_type", "code")
+	params.Add("scope", "openid+profile+email+goauthentik.io/api")
+	params.Add("state", "/#/profile")
+	fullURL := authServer + flow + "?" + url.QueryEscape(next+params.Encode())
+
+	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN), Data: fullURL})
+}
 func OIDCProfile(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
@@ -287,7 +303,7 @@ func OIDCProfile(c *gin.Context) {
 	}
 	// r := c.Request
 	// Get Authentik user info
-	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, baseURL)
+	authentikUser, err := service.MyService.Authentik().GetUserInfo(accessToken, authServer)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
@@ -370,16 +386,16 @@ func generateTokens(user model2.UserDBModel) (system_model.VerifyInformation, er
 	}, nil
 }
 
-func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value string) {
-	c := &http.Cookie{
-		Name:     name,
-		Value:    value,
-		MaxAge:   int(time.Hour.Seconds()),
-		Secure:   r.TLS != nil,
-		HttpOnly: true,
-	}
-	http.SetCookie(w, c)
-}
+// func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value string) {
+// 	c := &http.Cookie{
+// 		Name:     name,
+// 		Value:    value,
+// 		MaxAge:   int(time.Hour.Seconds()),
+// 		Secure:   r.TLS != nil,
+// 		HttpOnly: true,
+// 	}
+// 	http.SetCookie(w, c)
+// }
 
 // @Summary login user to openmediavault
 // @Produce  application/json

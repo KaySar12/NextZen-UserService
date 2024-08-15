@@ -39,6 +39,7 @@ func InitRouter() *gin.Engine {
 	r.GET("/v1/users/oidc/profile", v1.OIDCProfile)
 	r.GET("/v1/users/oidc/userinfo", v1.OIDCUserInfo)
 	r.POST("/v1/users/oidc/validateToken", v1.OIDCValidateToken)
+	r.POST("/v1/users/oidc/logout", v1.OIDCLogout)
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(
