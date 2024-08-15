@@ -45,12 +45,14 @@ import (
 )
 
 var (
-	authServer   = "http://10.0.0.26:9000"
+	//authServer   = "http://10.0.0.26:9000"
+	authServer   = "http://accessmanager.local"
 	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
-	// callbackURL  = "http://nextzenos.local/v1/users/oidc/callback"
-	callbackURL = "http://172.26.157.79:8080/v1/users/oidc/callback"
+	authURL      = "http://accessmanager.local/application/o/nextzenos-oidc/"
+	//authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
+	callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
+	//callbackURL = "http://172.26.157.79:8080/v1/users/oidc/callback"
 )
 
 // @Summary register user
