@@ -283,14 +283,14 @@ func OIDCLogout(c *gin.Context) {
 	accessToken := json["authentikToken"]
 	fmt.Println(accessToken)
 	flow := "/if/flow/default-authentication-flow/"
-	next := "next=/application/o/authorize/"
-	params := url.Values{}
-	params.Add("?client_id", clientID)
-	params.Add("redirect_uri", callbackURL)
-	params.Add("response_type", "code")
-	params.Add("scope", "openid+profile+email+goauthentik.io/api")
-	params.Add("state", "/#/profile")
-	fullURL := authServer + flow + "?" + url.QueryEscape(next+params.Encode())
+	next := "/application/o/authorize/"
+
+	client := "client_id=" + clientID
+	redirect_uri := "&redirect_uri=" + url.QueryEscape(callbackURL)
+	response_type := "&response_type=code"
+	scope := "&scope=openid+profile+email+" + url.QueryEscape("goauthentik.io/api")
+	state := "&state=" + url.QueryEscape("/#/profile")
+	fullURL := authServer + flow + "?" + "next=" + url.QueryEscape(next+"?"+client+redirect_uri+response_type+scope+state)
 
 	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN), Data: fullURL})
 }
