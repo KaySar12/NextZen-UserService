@@ -52,7 +52,7 @@ var (
 	authURL      = "http://accessmanager.local/application/o/nextzenos-oidc/"
 	//authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
 	callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
-	//callbackURL = "http://172.26.157.79:8080/v1/users/oidc/callback"
+	//callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
 )
 
 // @Summary register user
@@ -189,13 +189,76 @@ func randString(nByte int) (string, error) {
 }
 
 var oauth2Config oauth2.Config
+var oidcInit bool
+
+func InitOIDC() {
+	const (
+		maxSleep        = 60 * time.Second
+		minSleep        = 10 * time.Second
+		maxRetryBackoff = 5 // Cap retry backoff to 5 attempts
+	)
+
+	var (
+		successCount int
+		failCount    int
+		sleepTime    = minSleep
+	)
+
+	ticker := time.NewTicker(sleepTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := OIDC(); err == nil {
+				if !oidcInit {
+					log.Println("OIDC provider initialized successfully")
+				} else {
+					log.Println("OIDC provider renewed successfully")
+				}
+				oidcInit = true
+				failCount = 0
+				successCount++
+				// Exponential backoff with a cap
+				sleepTime = minSleep * time.Duration(successCount)
+				if sleepTime > maxSleep {
+					sleepTime = maxSleep
+				}
+
+			} else {
+				oidcInit = false
+				successCount = 0
+				failCount++
+				// Exponential backoff with a cap
+				sleepTime = minSleep * time.Duration(failCount)
+				if failCount > maxRetryBackoff {
+					sleepTime = minSleep * time.Duration(maxRetryBackoff)
+				}
+				log.Printf("OIDC initialization failed: %v. Retrying in %v", err, sleepTime)
+			}
+
+			log.Printf("Waiting for %v before next check", sleepTime)
+			ticker.Reset(sleepTime)
+		}
+	}
+}
+func CheckOIDCInit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !oidcInit {
+			log.Println("Provider is Offline")
+			c.JSON(http.StatusServiceUnavailable, model.Result{Success: http.StatusServiceUnavailable, Message: "Authentik Server is Offline"})
+			return
+		}
+		c.Next()
+	}
+}
 
 // Use an init function to initialize the oauth2Config variable.
-func OIDC() {
+func OIDC() error {
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, authURL)
 	if err != nil {
-		log.Fatalf("Error creating OIDC provider: %v", err) // This will print the error and stop execution
+		return err
 	}
 	oauth2Config = oauth2.Config{
 		ClientID:     clientID,
@@ -205,6 +268,7 @@ func OIDC() {
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "goauthentik.io/api"},
 		//add offline access for refresh token
 	}
+	return nil
 }
 func OIDCLogin(c *gin.Context) {
 	json := make(map[string]string)
@@ -264,6 +328,7 @@ func OIDCUserInfo(c *gin.Context) {
 		})
 }
 func OIDCValidateToken(c *gin.Context) {
+
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	accessToken := json["authentikToken"]
@@ -280,6 +345,7 @@ func OIDCValidateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 }
 func OIDCLogout(c *gin.Context) {
+
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	accessToken := json["authentikToken"]
@@ -297,6 +363,9 @@ func OIDCLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN), Data: fullURL})
 }
 func OIDCProfile(c *gin.Context) {
+	if !oidcInit {
+
+	}
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	accessToken, err := c.Cookie("accessToken")

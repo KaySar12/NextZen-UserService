@@ -15,7 +15,7 @@ import (
 func InitRouter() *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.Cors())
-	// r.Use(middleware.WriteLog())
+	r.Use(v1.CheckOIDCInit())
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// check if environment variable is set
@@ -24,7 +24,7 @@ func InitRouter() *gin.Engine {
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	v1.OIDC()
+	go v1.InitOIDC()
 	r.POST("/v1/users/register", v1.PostUserRegister)
 	r.POST("/v1/users/login", v1.PostUserLogin)
 	r.POST("/v1/users/omvlogin", v1.PostOMVLogin)
