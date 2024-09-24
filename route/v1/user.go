@@ -51,8 +51,8 @@ var (
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
 	authURL      = "http://accessmanager.local/application/o/nextzenos-oidc/"
 	//authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
-	callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
-	//callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
+	//callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
+	callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
 )
 
 // @Summary register user
@@ -246,7 +246,7 @@ func CheckOIDCInit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !oidcInit {
 			log.Println("Provider is Offline")
-			c.JSON(http.StatusServiceUnavailable, model.Result{Success: http.StatusServiceUnavailable, Message: "Authentik Server is Offline"})
+			c.JSON(http.StatusServiceUnavailable, model.Result{Success: http.StatusProxyAuthRequired, Message: "Authentik Server is Offline"})
 			return
 		}
 		c.Next()

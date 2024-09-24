@@ -23,8 +23,6 @@ var (
 		LogPath:      constants.DefaultLogPath,
 		LogSaveName:  "user",
 		LogFileExt:   "log",
-		OMVServer:    constants.DefaultOMVServer,
-		SecretKey:    constants.DefaultSecretKey,
 	}
 
 	Cfg            *ini.File
