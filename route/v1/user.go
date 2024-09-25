@@ -23,18 +23,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/IceWhaleTech/CasaOS-Common/external"
-	"github.com/IceWhaleTech/CasaOS-Common/utils/common_err"
-	"github.com/IceWhaleTech/CasaOS-Common/utils/jwt"
-	"github.com/IceWhaleTech/CasaOS-Common/utils/logger"
-	"github.com/IceWhaleTech/CasaOS-UserService/common"
-	"github.com/IceWhaleTech/CasaOS-UserService/model"
-	"github.com/IceWhaleTech/CasaOS-UserService/model/system_model"
-	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
-	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/encryption"
-	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/file"
-	"github.com/IceWhaleTech/CasaOS-UserService/service"
-	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	"github.com/KaySar12/NextZen-Common/external"
+	"github.com/KaySar12/NextZen-Common/utils/common_err"
+	"github.com/KaySar12/NextZen-Common/utils/jwt"
+	"github.com/KaySar12/NextZen-Common/utils/logger"
+	"github.com/KaySar12/NextZen-UserService/common"
+	"github.com/KaySar12/NextZen-UserService/model"
+	"github.com/KaySar12/NextZen-UserService/model/system_model"
+	"github.com/KaySar12/NextZen-UserService/pkg/config"
+	"github.com/KaySar12/NextZen-UserService/pkg/utils/encryption"
+	"github.com/KaySar12/NextZen-UserService/pkg/utils/file"
+	"github.com/KaySar12/NextZen-UserService/service"
+	model2 "github.com/KaySar12/NextZen-UserService/service/model"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	uuid "github.com/satori/go.uuid"
@@ -326,6 +326,19 @@ func OIDCUserInfo(c *gin.Context) {
 			Message: common_err.GetMsg(common_err.SUCCESS),
 			Data:    authentikUser,
 		})
+}
+func OIDCHealthCheck(c *gin.Context) {
+	var status string
+	status, err := service.MyService.Authentik().HealthCheck(authServer)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Result{Success: common_err.OIDC_OFFLINE, Message: common_err.GetMsg(common_err.OIDC_OFFLINE), Data: "Offline"})
+		return
+	}
+	if status == "Starting" {
+		c.JSON(http.StatusOK, model.Result{Success: common_err.OIDC_STARTING, Message: common_err.GetMsg(common_err.OIDC_OFFLINE), Data: "Starting"})
+		return
+	}
+	c.JSON(http.StatusOK, model.Result{Success: common_err.OIDC_LIVE, Message: common_err.GetMsg(common_err.OIDC_LIVE), Data: "Live"})
 }
 func OIDCValidateToken(c *gin.Context) {
 

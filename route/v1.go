@@ -4,10 +4,10 @@ import (
 	"crypto/ecdsa"
 	"os"
 
-	"github.com/IceWhaleTech/CasaOS-Common/middleware"
-	"github.com/IceWhaleTech/CasaOS-Common/utils/jwt"
-	v1 "github.com/IceWhaleTech/CasaOS-UserService/route/v1"
-	"github.com/IceWhaleTech/CasaOS-UserService/service"
+	"github.com/KaySar12/NextZen-Common/middleware"
+	"github.com/KaySar12/NextZen-Common/utils/jwt"
+	v1 "github.com/KaySar12/NextZen-UserService/route/v1"
+	"github.com/KaySar12/NextZen-UserService/service"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
@@ -40,6 +40,7 @@ func InitRouter() *gin.Engine {
 	r.GET("/v1/users/oidc/userinfo", v1.OIDCUserInfo)
 	r.POST("/v1/users/oidc/validateToken", v1.OIDCValidateToken)
 	r.POST("/v1/users/oidc/logout", v1.OIDCLogout)
+	r.GET("/v1/users/oidc/health", v1.OIDCHealthCheck)
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(

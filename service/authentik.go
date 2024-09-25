@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	model2 "github.com/KaySar12/NextZen-UserService/service/model"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +20,7 @@ type AuthentikService interface {
 	UpdateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
 	GetCredential(id int) model2.AuthentikCredentialsDBModel
 	ValidateToken(clientId string, clientSecret string, accessToken string, baseURL string) (model2.AuthentikToken, error)
+	HealthCheck(baseURL string) (string, error)
 }
 
 type authentikService struct {
@@ -43,14 +44,66 @@ func (a *authentikService) GetCredential(id int) model2.AuthentikCredentialsDBMo
 	a.db.Limit(1).Where("id = ?", id).First(&m)
 	return m
 }
+func (a *authentikService) HealthCheck(baseURL string) (string, error) {
+	// Check health/live first
+	pathLive := baseURL + "/-/health/live/"
+	reqLive, err := http.NewRequest("GET", pathLive, nil)
+	if err != nil {
+		log.Println("Error creating health/live request:", err)
+		return "Offline", err
+	}
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return nil // Always follow redirects
+		},
+	}
+
+	respLive, err := client.Do(reqLive)
+	if err != nil {
+		log.Println("Error on health/live request:", err)
+		return "Offline", err // Exit if the request fails
+	}
+	defer respLive.Body.Close()
+
+	// Check if health/live is 204 before proceeding
+	if respLive.StatusCode == http.StatusNoContent {
+		// Now check health/ready
+		pathReady := baseURL + "/-/health/ready/"
+		reqReady, err := http.NewRequest("GET", pathReady, nil)
+		if err != nil {
+			log.Println("Error creating health/ready request:", err)
+			return "Offline", err
+		}
+
+		respReady, err := client.Do(reqReady)
+		if err != nil {
+			log.Println("Error on health/ready request:", err)
+			return "Offline", err
+		}
+		defer respReady.Body.Close()
+
+		if respReady.StatusCode != http.StatusNoContent {
+			log.Println("HTTP error on health/ready:", respReady.Status)
+			return "Starting", nil
+		} else {
+			log.Println("Authentik is fully healthy!")
+			return "Live", nil
+		}
+
+	} else {
+		log.Println("HTTP error on health/live:", respLive.Status)
+		return "Offline", err
+	}
+}
 func (a *authentikService) ValidateToken(clientId string, clientSecret string, accessToken string, baseURL string) (model2.AuthentikToken, error) {
 	auth := clientId + ":" + clientSecret
 	basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
 	path := baseURL + "/application/o/introspect/"
 	formData := url.Values{}
 	formData.Set("token", accessToken)
-	responseBody := strings.NewReader(formData.Encode())
-	req, err := http.NewRequest("POST", path, responseBody)
+	reqBody := strings.NewReader(formData.Encode())
+	req, err := http.NewRequest("POST", path, reqBody)
 	if err != nil {
 		return model2.AuthentikToken{}, fmt.Errorf("error creating request: %v", err)
 	}

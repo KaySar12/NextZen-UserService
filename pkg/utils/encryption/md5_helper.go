@@ -16,7 +16,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
+	"github.com/KaySar12/NextZen-UserService/pkg/config"
 )
 
 var (

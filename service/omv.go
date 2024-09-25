@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
-	"github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	"github.com/KaySar12/NextZen-UserService/pkg/config"
+	"github.com/KaySar12/NextZen-UserService/service/model"
 )
 
 type OMVService interface {

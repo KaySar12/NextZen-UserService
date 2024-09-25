@@ -1,7 +1,7 @@
 package main
 
 import (
-	interfaces "github.com/IceWhaleTech/CasaOS-Common"
+	interfaces "github.com/KaySar12/NextZen-Common"
 )
 
 type migrationTool struct{}

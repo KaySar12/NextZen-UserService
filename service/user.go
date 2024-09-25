@@ -15,9 +15,9 @@ import (
 	"mime/multipart"
 	"os"
 
-	"github.com/IceWhaleTech/CasaOS-Common/utils/jwt"
-	"github.com/IceWhaleTech/CasaOS-Common/utils/logger"
-	"github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	"github.com/KaySar12/NextZen-Common/utils/jwt"
+	"github.com/KaySar12/NextZen-Common/utils/logger"
+	"github.com/KaySar12/NextZen-UserService/service/model"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

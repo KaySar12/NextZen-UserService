@@ -12,10 +12,10 @@ package sqlite
 import (
 	"time"
 
-	"github.com/IceWhaleTech/CasaOS-Common/utils/logger"
-	"github.com/IceWhaleTech/CasaOS-UserService/model"
-	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/file"
-	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
+	"github.com/KaySar12/NextZen-Common/utils/logger"
+	"github.com/KaySar12/NextZen-UserService/model"
+	"github.com/KaySar12/NextZen-UserService/pkg/utils/file"
+	model2 "github.com/KaySar12/NextZen-UserService/service/model"
 	"github.com/glebarez/sqlite"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
