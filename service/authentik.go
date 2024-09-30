@@ -16,9 +16,9 @@ import (
 type AuthentikService interface {
 	GetUserInfo(accessToken string, baseURL string) (model2.AuthentikUser, error)
 	GetUserApp(accessToken string, baseURL string) (model2.AuthentikApplication, error)
-	CreateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
-	UpdateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
-	GetCredential(id int) model2.AuthentikCredentialsDBModel
+	CreateSettings(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel
+	UpdateSettings(m model2.AuthentikCredentialsDBModel) (model2.AuthentikCredentialsDBModel, error)
+	GetSettings() (model2.AuthentikCredentialsDBModel, error)
 	ValidateToken(clientId string, clientSecret string, accessToken string, baseURL string) (model2.AuthentikToken, error)
 	HealthCheck(baseURL string) (string, error)
 }
@@ -31,18 +31,40 @@ var (
 	APICorePrefix = "/api/v3/core"
 )
 
-func (a *authentikService) CreateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel {
+func (a *authentikService) CreateSettings(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel {
 	a.db.Create(&m)
 	return m
 }
-func (a *authentikService) UpdateCredential(m model2.AuthentikCredentialsDBModel) model2.AuthentikCredentialsDBModel {
-	a.db.Model(&m).Where("id = ?", m.Id).Updates(m)
-	return m
+func (a *authentikService) UpdateSettings(m model2.AuthentikCredentialsDBModel) (model2.AuthentikCredentialsDBModel, error) {
+	// Find the first matching record
+	var existing model2.AuthentikCredentialsDBModel
+	result := a.db.First(&existing)
+	if result.Error != nil {
+		return existing, result.Error
+	}
+
+	// Update the existing record
+	existing.ClientID = m.ClientID
+	existing.ClientSecret = m.ClientSecret
+	existing.Issuer = m.Issuer
+	existing.AuthUrl = m.AuthUrl
+	existing.CallbackUrl = m.CallbackUrl
+
+	// Save the updated record
+	result = a.db.Save(&existing)
+	if result.Error != nil {
+		return existing, result.Error
+	}
+
+	return existing, nil
 }
-func (a *authentikService) GetCredential(id int) model2.AuthentikCredentialsDBModel {
+func (a *authentikService) GetSettings() (model2.AuthentikCredentialsDBModel, error) {
 	var m model2.AuthentikCredentialsDBModel
-	a.db.Limit(1).Where("id = ?", id).First(&m)
-	return m
+	result := a.db.First(&m)
+	if result.Error != nil {
+		return model2.AuthentikCredentialsDBModel{}, result.Error
+	}
+	return m, nil
 }
 func (a *authentikService) HealthCheck(baseURL string) (string, error) {
 	// Check health/live first

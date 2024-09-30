@@ -51,9 +51,19 @@ var (
 	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
 	authURL      = "http://accessmanager.local/application/o/nextzenos-oidc/"
 	//authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
-	//callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
-	callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
+	callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
+	//callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
 )
+
+type OIDCSetting struct {
+	Settings struct {
+		ClientID     string `json:"clientId"`
+		ClientSecret string `json:"clientSecret"`
+		Issuer       string `json:"issuer"`
+		AuthURL      string `json:"authUrl"`
+		CallbackURL  string `json:"callbackUrl"`
+	} `json:"settings"`
+}
 
 // @Summary register user
 // @Router /user/register/ [post]
@@ -246,7 +256,7 @@ func CheckOIDCInit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !oidcInit {
 			log.Println("Provider is Offline")
-			c.JSON(http.StatusServiceUnavailable, model.Result{Success: http.StatusProxyAuthRequired, Message: "Authentik Server is Offline"})
+			c.JSON(http.StatusServiceUnavailable, model.Result{Success: common_err.OIDC_OFFLINE, Message: "Authentik Server is Offline"})
 			return
 		}
 		c.Next()
@@ -255,6 +265,14 @@ func CheckOIDCInit() gin.HandlerFunc {
 
 // Use an init function to initialize the oauth2Config variable.
 func OIDC() error {
+	authentik, err := service.MyService.Authentik().GetSettings()
+	if (authentik != model2.AuthentikCredentialsDBModel{} && err == nil) {
+		clientID = authentik.ClientID
+		clientSecret = authentik.ClientSecret
+		authServer = authentik.Issuer
+		authURL = authentik.AuthUrl
+		callbackURL = authentik.CallbackUrl
+	}
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, authURL)
 	if err != nil {
@@ -270,6 +288,24 @@ func OIDC() error {
 	}
 	return nil
 }
+func GetOIDCSettings(c *gin.Context) {
+	authentik, err := service.MyService.Authentik().GetSettings()
+	if err != nil {
+		c.JSON(common_err.SERVICE_ERROR,
+			model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+		return
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    authentik,
+		})
+	return
+}
 func OIDCLogin(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
@@ -283,6 +319,30 @@ func OIDCLogin(c *gin.Context) {
 			Success: common_err.SUCCESS,
 			Message: common_err.GetMsg(common_err.SUCCESS),
 			Data:    oauth2Config.AuthCodeURL(state),
+		})
+}
+func SaveOIDCSettings(c *gin.Context) {
+	var oidcSetting OIDCSetting
+	var authentik model2.AuthentikCredentialsDBModel
+	c.ShouldBind(&oidcSetting)
+	authentik.ClientID = oidcSetting.Settings.ClientID
+	authentik.ClientSecret = oidcSetting.Settings.ClientSecret
+	authentik.Issuer = oidcSetting.Settings.Issuer
+	authentik.AuthUrl = oidcSetting.Settings.AuthURL
+	authentik.CallbackUrl = oidcSetting.Settings.CallbackURL
+	var result, err = service.MyService.Authentik().UpdateSettings(authentik)
+	if err != nil {
+		c.JSON(common_err.SERVICE_ERROR,
+			model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    result,
 		})
 }
 func OIDCCallback(c *gin.Context) {

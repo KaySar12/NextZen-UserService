@@ -41,6 +41,8 @@ func InitRouter() *gin.Engine {
 	r.POST("/v1/users/oidc/validateToken", v1.OIDCValidateToken)
 	r.POST("/v1/users/oidc/logout", v1.OIDCLogout)
 	r.GET("/v1/users/oidc/health", v1.OIDCHealthCheck)
+	r.GET("/v1/users/oidc/settings", v1.GetOIDCSettings)
+	r.POST("/v1/users/oidc/saveSettings", v1.SaveOIDCSettings)
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(
