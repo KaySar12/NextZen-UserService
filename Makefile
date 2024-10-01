@@ -11,7 +11,7 @@ TAG=v1.4.0
 ARCHIVE_PATH=buildzip
 PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
 
-build-service:
+build_service:
 	$(GORELEASERBUILD) --clean --snapshot -f .goreleaser.debug.yaml --id $(SERVICE)-$(ARCHITECHTURE)
 
 package:
