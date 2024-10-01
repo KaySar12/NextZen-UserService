@@ -7,7 +7,7 @@ VERSION=v1
 BIN_PATH=build/sysroot/usr/bin
 BUILD_PATH=build
 CUR_DIR=$(PWD)
-TAG=v1.2.5
+TAG=v1.4.0
 ARCHIVE_PATH=buildzip
 PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
 

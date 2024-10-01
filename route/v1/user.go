@@ -310,10 +310,12 @@ func OIDCLogin(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	state := json["state"]
+	callBackUrl := fmt.Sprintf("%s/%s", json["baseUrl"], "v1/users/oidc/callback")
 	// w := c.Writer
 	// r := c.Request
 	// setCallbackCookie(w, r, "state", state)
 	// c.Redirect(http.StatusFound, oauth2Config.AuthCodeURL(state))
+	oauth2Config.RedirectURL = callBackUrl
 	c.JSON(common_err.SUCCESS,
 		model.Result{
 			Success: common_err.SUCCESS,
