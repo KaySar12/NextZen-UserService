@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// Soon to be removed
+// TODO  Refreshtoken
 type AuthentikCredentialsDBModel struct {
 	Id           int       `gorm:"column:id;primary_key" json:"id"`
 	ClientID     string    `json:"clientId"`

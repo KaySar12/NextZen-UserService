@@ -283,7 +283,7 @@ func OIDC() error {
 		ClientSecret: clientSecret,
 		RedirectURL:  callbackURL,
 		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "goauthentik.io/api"},
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "offline_access", "goauthentik.io/api"},
 		//add offline access for refresh token
 	}
 	return nil
@@ -311,10 +311,7 @@ func OIDCLogin(c *gin.Context) {
 	c.ShouldBind(&json)
 	state := json["state"]
 	callBackUrl := fmt.Sprintf("%s/%s", json["baseUrl"], "v1/users/oidc/callback")
-	// w := c.Writer
-	// r := c.Request
-	// setCallbackCookie(w, r, "state", state)
-	// c.Redirect(http.StatusFound, oauth2Config.AuthCodeURL(state))
+
 	oauth2Config.RedirectURL = callBackUrl
 	c.JSON(common_err.SUCCESS,
 		model.Result{
@@ -366,14 +363,15 @@ func OIDCCallback(c *gin.Context) {
 		return
 	}
 	expiryDuration := time.Until(oauth2Token.Expiry)
-	c.SetCookie("accessToken", oauth2Token.AccessToken, int(expiryDuration.Seconds()), "/", "", false, true)
-	// c.SetCookie("refreshToken", oauth2Token.RefreshToken, int(expiryDuration.Seconds()), "/", "", false, true)
+	c.SetCookie("authentik_accessToken", oauth2Token.AccessToken, int(expiryDuration.Seconds()), "/", "", false, true)
+	// c.SetCookie("authentik_refreshToken", oauth2Token.RefreshToken, int(expiryDuration.Seconds()), "/", "", false, true)
 	c.Redirect(http.StatusFound, state)
 }
 func OIDCUserInfo(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-	accessToken, err := c.Cookie("accessToken")
+	accessToken, err := c.Cookie("authentik_accessToken")
+
 	if err != nil {
 		c.Redirect(http.StatusFound, "/#/oidc")
 	}
@@ -406,9 +404,12 @@ func OIDCValidateToken(c *gin.Context) {
 
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-	accessToken := json["authentikToken"]
+	accessToken, err := c.Cookie("authentik_accessToken")
+	if err != nil {
+		c.Redirect(http.StatusFound, "/#/oidc")
+	}
 	var validateToken model2.AuthentikToken
-	validateToken, err := service.MyService.Authentik().ValidateToken(clientID, clientSecret, accessToken, authServer)
+	validateToken, err = service.MyService.Authentik().ValidateToken(clientID, clientSecret, accessToken, authServer)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
@@ -420,11 +421,8 @@ func OIDCValidateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 }
 func OIDCLogout(c *gin.Context) {
-
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-	accessToken := json["authentikToken"]
-	fmt.Println(accessToken)
 	flow := "/if/flow/default-authentication-flow/"
 	next := "/application/o/authorize/"
 
@@ -439,11 +437,11 @@ func OIDCLogout(c *gin.Context) {
 }
 func OIDCProfile(c *gin.Context) {
 	if !oidcInit {
-
+		c.Redirect(http.StatusFound, "/#/authentik-offline")
 	}
 	json := make(map[string]string)
 	c.ShouldBind(&json)
-	accessToken, err := c.Cookie("accessToken")
+	accessToken, err := c.Cookie("authentik_accessToken")
 	if err != nil {
 		c.Redirect(http.StatusFound, "/#/oidc")
 	}
@@ -469,6 +467,7 @@ func OIDCProfile(c *gin.Context) {
 		user = model2.UserDBModel{
 			Username: authentikUser.User.Username,
 			Password: hashPassword(),
+			Email:    authentikUser.User.Email,
 			Role:     determineUserRole(authentikUser.User.IsSuperuser),
 			Avatar:   authentikUser.User.Avatar,
 		}
