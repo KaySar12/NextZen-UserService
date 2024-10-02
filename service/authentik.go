@@ -67,7 +67,6 @@ func (a *authentikService) GetSettings() (model2.AuthentikCredentialsDBModel, er
 	return m, nil
 }
 
-// TODO SHOULD BE Migrate to NEXTZENOS
 func (a *authentikService) HealthCheck(baseURL string) (string, error) {
 	// Check health/live first
 	pathLive := baseURL + "/-/health/live/"

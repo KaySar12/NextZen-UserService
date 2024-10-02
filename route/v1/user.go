@@ -53,6 +53,9 @@ var (
 	//authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
 	callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
 	//callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
+	onePanelServer   = "http://172.20.60.244:13000"
+	onePanelName     = "nextzen"
+	onePanelPassword = "Smartyourlife123@*"
 )
 
 type OIDCSetting struct {
@@ -122,6 +125,34 @@ var limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
 // @Param pwd  query string true "password"
 // @Success 200 {string} string "ok"
 // @Router /user/login [post]
+func OnePanelLogin(c *gin.Context) {
+	var cred = model2.OnePanelCredentials{
+		Name:          onePanelName,
+		Password:      onePanelPassword,
+		IgnoreCaptcha: true,
+		Captcha:       "",
+		CaptchaID:     "",
+		AuthMethod:    "session",
+		Language:      "en",
+	}
+	response, cookies, err := service.MyService.OnePanel().Login(cred, "http://172.20.60.244:13000")
+	if err != nil {
+		c.JSON(common_err.SERVICE_ERROR,
+			model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+	}
+	for _, cookie := range cookies {
+		c.SetCookie(cookie.Name, cookie.Value, 3600, "/", "", false, true)
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+			Data:    response,
+		})
+}
 func PostUserLogin(c *gin.Context) {
 	if !limiter.Allow() {
 		c.JSON(common_err.TOO_MANY_REQUEST,
@@ -501,6 +532,14 @@ func determineUserRole(isSuperuser bool) string {
 		return "admin"
 	}
 	return "user"
+}
+func OnePanelHealthCheck(c *gin.Context) {
+	status, err := service.MyService.OnePanel().HealthCheck(onePanelServer)
+	if err != nil || status == "Offline" {
+		c.JSON(http.StatusOK, model.Result{Success: common_err.OIDC_OFFLINE, Message: common_err.GetMsg(common_err.OIDC_OFFLINE), Data: "Offline"})
+		return
+	}
+	c.JSON(http.StatusOK, model.Result{Success: common_err.OIDC_LIVE, Message: common_err.GetMsg(common_err.OIDC_LIVE), Data: "Live"})
 }
 
 func hashPassword() string {

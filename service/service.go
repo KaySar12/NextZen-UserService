@@ -16,6 +16,7 @@ type Repository interface {
 	Event() EventService
 	OMV() OMVService
 	Authentik() AuthentikService
+	OnePanel() OnePanelService
 }
 
 func NewService(db *gorm.DB, RuntimePath string) Repository {
@@ -31,6 +32,7 @@ func NewService(db *gorm.DB, RuntimePath string) Repository {
 		event:     NewEventService(db),
 		omv:       NewOMVService(),
 		authentik: NewAuthentikService(db),
+		onePanel:  NewOnePanelService(),
 	}
 }
 
@@ -40,8 +42,12 @@ type store struct {
 	event     EventService
 	omv       OMVService
 	authentik AuthentikService
+	onePanel  OnePanelService
 }
 
+func (c *store) OnePanel() OnePanelService {
+	return c.onePanel
+}
 func (c *store) Event() EventService {
 	return c.event
 }
