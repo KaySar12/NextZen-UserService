@@ -145,9 +145,9 @@ archives:
   - name_template: >-
       {{ .Os }}-{{- if eq .Arch "arm" }}arm-7{{- else }}{{ .Arch }}{{- end }}-{{ .ProjectName }}-v{{ .Version }}
     builds:
-      - casaos-user-service-amd64
-      - casaos-user-service-arm64
-      - casaos-user-service-arm-7
+      - nextzen-user-service-amd64
+      - nextzen-user-service-arm64
+      - nextzen-user-service-arm-7
     files:
       - build/**/*
   # - name_template: >-
@@ -169,10 +169,11 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+      - "^update:"
 release:
   github:
-    owner: KaySar12
-    name: NextZen-UserService
+    owner: IceWhaleTech
+    name: CasaOS-UserService
   draft: true
   prerelease: auto
   mode: replace
