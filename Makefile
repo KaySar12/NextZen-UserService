@@ -10,6 +10,7 @@ BIN_PATH=build/sysroot/usr/bin
 BUILD_PATH=build
 CUR_DIR=$(PWD)
 CUR_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | tail -n1)
+PREV_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | head -n2 | tail -n1)
 ARCHIVE_PATH=buildzip
 PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
 TAG_MESSAGE ?= ""
@@ -28,16 +29,18 @@ remove_package:
 	rm $(PACKAGE_NAME).tar.gz
 clear_archive:
 	@rm -rf $(CUR_DIR)/$(ARCHIVE_PATH)
-#make create_release CUR_TAG=x.x TAG_MESSAGE=this is tag message
+#make create_tag CUR_TAG=x.x TAG_MESSAGE="this is tag message"
 create_tag:
 	@${GIT} push ${GIT_REMOTE}
 	@${GIT} tag -a ${CUR_TAG} -m "${TAG_MESSAGE}" || { echo "Failed to create tag"; exit 1; }
 	@${GIT} push ${GIT_REMOTE} ${CUR_TAG} ||  { echo "Failed to push tag"; exit 1; }
-	@export GORELEASER_PREVIOUS_TAG=${PREVTAG}
 remove_tag:
 	@${GIT} tag -d ${CUR_TAG}
 	@${GIT} push ${GIT_REMOTE} -d ${CUR_TAG}	
+check_tag:
+	@echo "Previous tag: $(PREV_TAG)";
+	@echo "Current tag: $(CUR_TAG)";  
 push_release_all:
-	${GORELEASER} release --clean
+	${GORELEASER} release --clean  -f .goreleaser.yaml
 push_release:
 	${GORELEASER} release --single-target
