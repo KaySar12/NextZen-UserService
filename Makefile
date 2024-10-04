@@ -1,7 +1,7 @@
 GORELEASER=goreleaser
 GORELEASERBUILD=$(GORELEASER) build
 GIT=git
-GIT_REMOTE=origin
+GIT_REMOTE?=origin
 SERVICE = casaos-user-service
 ARCHITECHTURE= amd64
 OS=linux
@@ -14,7 +14,7 @@ PREV_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | head -n2 | t
 ARCHIVE_PATH=buildzip
 PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
 TAG_MESSAGE ?= ""
-
+GIT_COMMIT_MESSAGE ?=""
 build_service:
 	$(GORELEASERBUILD) --clean --snapshot -f .goreleaser.debug.yaml --id $(SERVICE)-$(ARCHITECHTURE)
 
@@ -34,6 +34,7 @@ create_tag:
 	@${GIT} push ${GIT_REMOTE}
 	@${GIT} tag -a ${CUR_TAG} -m "${TAG_MESSAGE}" || { echo "Failed to create tag"; exit 1; }
 	@${GIT} push ${GIT_REMOTE} ${CUR_TAG} ||  { echo "Failed to push tag"; exit 1; }
+#make remove_tag CUR_TAG=x.x
 remove_tag:
 	@${GIT} tag -d ${CUR_TAG}
 	@${GIT} push ${GIT_REMOTE} -d ${CUR_TAG}	
@@ -44,3 +45,8 @@ push_release_all:
 	${GORELEASER} release --clean  -f .goreleaser.yaml
 push_release:
 	${GORELEASER} release --single-target
+push_commit:
+	@${GIT} pull ${GIT_REMOTE}
+	@${GIT} add .
+	@${GIT} commit -m "${GIT_COMMIT_MESSAGE}"
+	@${GIT} push ${GIT_REMOTE}
