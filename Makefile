@@ -14,7 +14,8 @@ PREV_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | head -n2 | t
 ARCHIVE_PATH=buildzip
 PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
 TAG_MESSAGE ?= ""
-GIT_COMMIT_MESSAGE ?=""
+GIT_MESSAGE_FILE := commit.txt
+GIT_COMMIT_MESSAGE ?=$(shell cat ${file})
 build_service:
 	$(GORELEASERBUILD) --clean --snapshot -f .goreleaser.debug.yaml --id $(SERVICE)-$(ARCHITECHTURE)
 
@@ -30,8 +31,7 @@ remove_package:
 clear_archive:
 	@rm -rf $(CUR_DIR)/$(ARCHIVE_PATH)
 #make create_tag CUR_TAG=x.x TAG_MESSAGE="this is tag message"
-create_tag:
-	@${GIT} push ${GIT_REMOTE}
+create_tag:push_git
 	@${GIT} tag -a ${CUR_TAG} -m "${TAG_MESSAGE}" || { echo "Failed to create tag"; exit 1; }
 	@${GIT} push ${GIT_REMOTE} ${CUR_TAG} ||  { echo "Failed to push tag"; exit 1; }
 #make remove_tag CUR_TAG=x.x
@@ -41,11 +41,11 @@ remove_tag:
 check_tag:
 	@echo "Previous tag: $(PREV_TAG)";
 	@echo "Current tag: $(CUR_TAG)";  
-push_release_all:
+push_release_all:push_git
 	${GORELEASER} release --clean  -f .goreleaser.yaml
-push_release:
+push_release:push_git
 	${GORELEASER} release --single-target
-push_commit:
+push_git:
 	@${GIT} pull ${GIT_REMOTE}
 	@${GIT} add .
 	@${GIT} commit -m "${GIT_COMMIT_MESSAGE}"

@@ -20,7 +20,7 @@ target/
 dist/
 __debug_bin
 codegen/
-
+commit.txt
 node_modules/
 dist/
 .idea
