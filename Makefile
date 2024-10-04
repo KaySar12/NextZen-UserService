@@ -13,9 +13,8 @@ CUR_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | tail -n1)
 PREV_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | head -n2 | tail -n1)
 ARCHIVE_PATH=buildzip
 PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
-TAG_MESSAGE ?= ""
-GIT_MESSAGE_FILE := commit.txt
-GIT_COMMIT_MESSAGE ?=$(shell cat ${file})
+
+GIT_COMMIT_MESSAGE ?="update"
 build_service:
 	$(GORELEASERBUILD) --clean --snapshot -f .goreleaser.debug.yaml --id $(SERVICE)-$(ARCHITECHTURE)
 
