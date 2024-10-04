@@ -172,8 +172,8 @@ changelog:
       - "^update:"
 release:
   github:
-    owner: IceWhaleTech
-    name: CasaOS-UserService
+    owner: KaySar12
+    name: NextZen-UserService
   draft: true
   prerelease: auto
   mode: replace
