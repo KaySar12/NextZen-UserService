@@ -36,6 +36,7 @@ import (
 	"github.com/KaySar12/NextZen-UserService/service"
 	model2 "github.com/KaySar12/NextZen-UserService/service/model"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	uuid "github.com/satori/go.uuid"
 	"github.com/tidwall/gjson"
@@ -45,15 +46,12 @@ import (
 )
 
 var (
-	//authServer   = "http://10.0.0.26:9000"
-	authServer   = "http://accessmanager.local"
-	clientID     = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
-	clientSecret = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL      = "http://accessmanager.local/application/o/nextzenos-oidc/"
-	//authURL      = "http://10.0.0.26:9000/application/o/nextzenos-oidc/"
-	callbackURL = "http://nextzenos.local/v1/users/oidc/callback"
-	//callbackURL = "http://172.20.60.244:8080/v1/users/oidc/callback"
-	onePanelServer   = "http://172.20.60.244:13000"
+	authServer       = "http://accessmanager.local"
+	clientID         = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
+	clientSecret     = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
+	authURL          = "http://accessmanager.local/application/o/nextzenos-oidc/"
+	callbackURL      = "http://nextzenos.local/v1/users/oidc/callback"
+	onePanelServer   = "http://nextweb.local"
 	onePanelName     = "nextzen"
 	onePanelPassword = "Smartyourlife123@*"
 )
@@ -117,16 +115,36 @@ func PostUserRegister(c *gin.Context) {
 
 var limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
 
-// @Summary login
-// @Produce  application/json
-// @Accept application/json
-// @Tags user
-// @Param user_name query string true "User name"
-// @Param pwd  query string true "password"
-// @Success 200 {string} string "ok"
-// @Router /user/login [post]
-func OnePanelLogin(c *gin.Context) {
-	var cred = model2.OnePanelCredentials{
+func ExternalAPIMiddleware(c *gin.Context) {
+	session := sessions.Default(c)
+	sessionId := session.Get("psession")
+
+	if sessionId == nil {
+		if err := OnePanelLogin(c); err != nil {
+			c.JSON(http.StatusUnauthorized, model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+			c.Abort()
+			return
+		}
+		sessionId = session.Get("psession")
+		if sessionId == nil {
+			c.JSON(http.StatusInternalServerError, model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+			c.Abort()
+			return
+		}
+	}
+
+	// Add sessionId to the request's Cookie header
+	c.Request.Header.Set("Cookie", "psession="+sessionId.(string))
+	c.Next()
+}
+func OnePanelLogin(c *gin.Context) error {
+	cred := model2.OnePanelCredentials{
 		Name:          onePanelName,
 		Password:      onePanelPassword,
 		IgnoreCaptcha: true,
@@ -135,7 +153,94 @@ func OnePanelLogin(c *gin.Context) {
 		AuthMethod:    "session",
 		Language:      "en",
 	}
-	response, cookies, err := service.MyService.OnePanel().Login(cred, "http://172.20.60.244:13000")
+
+	response, cookies, err := service.MyService.OnePanel().Login(cred, onePanelServer)
+	fmt.Println(response)
+	if err != nil {
+		logger.Error("OnePanel login failed", zap.Error(err))
+		return err
+	}
+
+	session := sessions.Default(c)
+	for _, cookie := range cookies {
+		session.Set(cookie.Name, cookie.Value)
+	}
+
+	if err := session.Save(); err != nil {
+		logger.Error("Failed to save session", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+// func OnePanelLogin(c *gin.Context) {
+// 	var cred = model2.OnePanelCredentials{
+// 		Name:          onePanelName,
+// 		Password:      onePanelPassword,
+// 		IgnoreCaptcha: true,
+// 		Captcha:       "",
+// 		CaptchaID:     "",
+// 		AuthMethod:    "session",
+// 		Language:      "en",
+// 	}
+
+//		response, cookies, err := service.MyService.OnePanel().Login(cred, onePanelServer)
+//		if err != nil {
+//			c.JSON(common_err.SERVICE_ERROR,
+//				model.Result{
+//					Success: common_err.SERVICE_ERROR,
+//					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+//				})
+//		}
+//		session := sessions.Default(c)
+//		for _, cookie := range cookies {
+//			session.Set(cookie.Name, cookie.Value)
+//			c.SetCookie(cookie.Name, cookie.Value, 3600, "/", "", false, true)
+//		}
+//		session.Save()
+//		c.JSON(common_err.SUCCESS,
+//			model.Result{
+//				Success: common_err.SUCCESS,
+//				Message: common_err.GetMsg(common_err.SUCCESS),
+//				Data:    response,
+//			})
+//	}
+func OnePanelCreateWebsite(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	domain := json["domain"]
+	port := json["port"]
+	protocol := json["protocol"]
+	// useSSl := json["useSSL"]
+	var website model2.CreateWebsiteRequest
+	website.PrimaryDomain = domain
+	website.Type = "proxy"
+	website.Alias = domain
+	website.AppType = "installed"
+	website.WebSiteGroupID = 2
+	website.Proxy = "http://127.0.0.1:" + port
+	portInt, err := strconv.ParseInt(port, 10, 64)
+	if err != nil {
+		log.Printf("Error converting port to integer: %v", err)
+
+	}
+	website.Port = portInt
+	website.ProxyProtocol = protocol
+	website.ProxyAddress = "127.0.0.1" + port
+	website.RuntimeType = "php"
+	headers := make(map[string]string)
+	for key, value := range c.Request.Header {
+		headers[key] = value[0]
+	}
+	var searchParam model2.SearchWebsiteRequest
+	searchParam.Name = website.PrimaryDomain
+	searchParam.Page = 1
+	searchParam.PageSize = 1
+	searchParam.OrderBy = "created_at"
+	searchParam.Order = "null"
+	searchParam.WebsiteGroupID = 0
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
 	if err != nil {
 		c.JSON(common_err.SERVICE_ERROR,
 			model.Result{
@@ -143,14 +248,26 @@ func OnePanelLogin(c *gin.Context) {
 				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 			})
 	}
-	for _, cookie := range cookies {
-		c.SetCookie(cookie.Name, cookie.Value, 3600, "/", "", false, true)
+	if search.Data.Total == 0 {
+		response, err := service.MyService.OnePanel().CreateWebsite(website, onePanelServer, headers)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{
+					Success: common_err.SERVICE_ERROR,
+					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+				})
+		}
+		c.JSON(common_err.SUCCESS,
+			model.Result{
+				Success: common_err.SUCCESS,
+				Message: common_err.GetMsg(common_err.SUCCESS),
+				Data:    response,
+			})
 	}
 	c.JSON(common_err.SUCCESS,
 		model.Result{
 			Success: common_err.SUCCESS,
 			Message: common_err.GetMsg(common_err.SUCCESS),
-			Data:    response,
 		})
 }
 func PostUserLogin(c *gin.Context) {

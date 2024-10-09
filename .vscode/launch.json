@@ -6,7 +6,7 @@
             "type": "go",
             "debugAdapter": "dlv-dap",
             "request": "launch",
-            "port": 33107,
+            "port": 40131,
             "host": "127.0.0.1",
             "mode": "exec",
             "program": "${workspaceFolder}/dist/casaos-user-service-amd64_linux_amd64_v1/build/sysroot/usr/bin/casaos-user-service"

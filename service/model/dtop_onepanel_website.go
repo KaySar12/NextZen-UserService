@@ -39,37 +39,36 @@ type SearchWebsiteResponse struct {
 
 type CreateWebsiteRequest struct {
 	PrimaryDomain  string `json:"primaryDomain"`
-	Type           string `json:"type"`
-	Alias          string `json:"alias"`
-	Remark         string `json:"remark"`
-	AppType        string `json:"appType"`
-	WebSiteGroupID int    `json:"webSiteGroupId"`
-	OtherDomains   string `json:"otherDomains"`
-	Proxy          string `json:"proxy"`
+	Type           string `json:"type,omitempty"`
+	Alias          string `json:"alias,omitempty"`
+	Remark         string `json:"remark,omitempty"`
+	AppType        string `json:"appType,omitempty"`
+	WebSiteGroupID int64  `json:"webSiteGroupId,omitempty"`
+	OtherDomains   string `json:"otherDomains,omitempty"`
+	Proxy          string `json:"proxy,omitempty"`
 	Appinstall     struct {
-		AppID       int    `json:"appId"`
-		Name        string `json:"name"`
-		AppDetailID int    `json:"appDetailId"`
-		Params      struct {
-		} `json:"params"`
-		Version       string `json:"version"`
-		Appkey        string `json:"appkey"`
-		Advanced      bool   `json:"advanced"`
-		CPUQuota      int    `json:"cpuQuota"`
-		MemoryLimit   int    `json:"memoryLimit"`
-		MemoryUnit    string `json:"memoryUnit"`
-		ContainerName string `json:"containerName"`
-		AllowPort     bool   `json:"allowPort"`
-	} `json:"appinstall"`
-	IPV6          bool   `json:"IPV6"`
-	EnableFtp     bool   `json:"enableFtp"`
-	FtpUser       string `json:"ftpUser"`
-	FtpPassword   string `json:"ftpPassword"`
-	ProxyType     string `json:"proxyType"`
-	Port          int    `json:"port"`
-	ProxyProtocol string `json:"proxyProtocol"`
-	ProxyAddress  string `json:"proxyAddress"`
-	RuntimeType   string `json:"runtimeType"`
+		AppID         int64    `json:"appId,omitempty"`
+		Name          string   `json:"name,omitempty"`
+		AppDetailID   int64    `json:"appDetailId,omitempty"`
+		Params        struct{} `json:"params,omitempty"`
+		Version       string   `json:"version,omitempty"`
+		Appkey        string   `json:"appkey,omitempty"`
+		Advanced      bool     `json:"advanced,omitempty"`
+		CPUQuota      int64    `json:"cpuQuota,omitempty"`
+		MemoryLimit   int64    `json:"memoryLimit,omitempty"`
+		MemoryUnit    string   `json:"memoryUnit,omitempty"`
+		ContainerName string   `json:"containerName,omitempty"`
+		AllowPort     bool     `json:"allowPort,omitempty"`
+	} `json:"appinstall,omitempty"`
+	IPV6          bool   `json:"IPV6,omitempty"`
+	EnableFtp     bool   `json:"enableFtp,omitempty"`
+	FtpUser       string `json:"ftpUser,omitempty"`
+	FtpPassword   string `json:"ftpPassword,omitempty"`
+	ProxyType     string `json:"proxyType,omitempty"`
+	Port          int64  `json:"port,omitempty"`
+	ProxyProtocol string `json:"proxyProtocol,omitempty"`
+	ProxyAddress  string `json:"proxyAddress,omitempty"`
+	RuntimeType   string `json:"runtimeType,omitempty"`
 }
 
 type DeleteWebsiteRequest struct {

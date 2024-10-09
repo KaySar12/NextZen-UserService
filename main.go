@@ -125,6 +125,7 @@ func main() {
 
 	apiPaths := []string{
 		"/v1/users",
+		"/v1/1panel",
 		route.V2APIPath,
 		route.V2DocPath,
 		"/" + jwt.JWKSPath,

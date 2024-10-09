@@ -16,8 +16,8 @@ type OnePanelService interface {
 	HealthCheck(baseURL string) (string, error)
 	SearchInstalledApp(p model2.InstalledAppRequest, baseURL string) (model2.InstalledAppResponse, error)
 	// InstallApp()
-	// SearchWebsite()
-	// CreateWebsite()
+	SearchWebsite(m model2.SearchWebsiteRequest, baseUrl string, headers map[string]string) (model2.SearchWebsiteResponse, error)
+	CreateWebsite(m model2.CreateWebsiteRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 	// DeleteWebsite()
 }
 
@@ -28,6 +28,65 @@ var (
 type onePanelService struct {
 }
 
+func (o *onePanelService) SearchWebsite(m model2.SearchWebsiteRequest, baseUrl string, headers map[string]string) (model2.SearchWebsiteResponse, error) {
+	path := baseUrl + "/api/v1/websites/search"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.SearchWebsiteResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.SearchWebsiteResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.SearchWebsiteResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.SearchWebsiteResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.SearchWebsiteResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.SearchWebsiteResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
+func (o *onePanelService) CreateWebsite(m model2.CreateWebsiteRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
+	path := baseUrl + "/api/v1/websites"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.GenericResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.GenericResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
 func (o *onePanelService) SearchInstalledApp(m model2.InstalledAppRequest, baseUrl string) (model2.InstalledAppResponse, error) {
 	path := baseUrl + "/api/v1/websites/search"
 	reqBody, err := json.Marshal(m)

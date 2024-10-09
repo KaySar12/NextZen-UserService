@@ -9,6 +9,8 @@ import (
 	v1 "github.com/KaySar12/NextZen-UserService/route/v1"
 	"github.com/KaySar12/NextZen-UserService/service"
 	"github.com/gin-contrib/gzip"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,12 +20,16 @@ func InitRouter() *gin.Engine {
 	r.Use(v1.CheckOIDCInit())
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
+	store := cookie.NewStore([]byte("secret"))
+	sessionMiddleware := sessions.Sessions("1Panel", store)
+	r.Use(sessionMiddleware)
 	// check if environment variable is set
 	if ginMode, success := os.LookupEnv("GIN_MODE"); success {
 		gin.SetMode(ginMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
 	go v1.InitOIDC()
 	r.POST("/v1/users/register", v1.PostUserRegister)
 	r.POST("/v1/users/login", v1.PostUserLogin)
@@ -43,8 +49,11 @@ func InitRouter() *gin.Engine {
 	r.GET("/v1/users/oidc/health", v1.OIDCHealthCheck)
 	r.GET("/v1/users/oidc/settings", v1.GetOIDCSettings)
 	r.POST("/v1/users/oidc/saveSettings", v1.SaveOIDCSettings)
-	r.GET("/v1/users/1panel/health", v1.OnePanelHealthCheck)
-	r.POST("/v1/users/1panel/login", v1.OnePanelLogin)
+	r.GET("/v1/1panel/health", v1.OnePanelHealthCheck)
+	// r.POST("/v1/1panel/login", v1.OnePanelLogin)
+	// r.POST("/v1/1panel/app/search", v1.ExternalAPIMiddleware, v1.OnePanelLogin)
+	// r.POST("/v1/1panel/website/search", v1.ExternalAPIMiddleware, v1.OnePanelLogin)
+	r.POST("/v1/1panel/website/create", v1.ExternalAPIMiddleware, v1.OnePanelCreateWebsite)
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(
@@ -54,6 +63,15 @@ func InitRouter() *gin.Engine {
 		},
 	))
 	{
+		// v1OnePanel := v1Group.Group("/1panel")
+		// v1OnePanel.Use()
+		// {
+		// 	r.GET("/health", v1.OnePanelHealthCheck)
+		// 	r.POST("/login", v1.OnePanelLogin)
+		// 	r.POST("/app/search", v1.ExternalAPIMiddleware, v1.OnePanelLogin)
+		// 	r.POST("/website/search", v1.ExternalAPIMiddleware, v1.OnePanelLogin)
+		// 	r.POST("/website/create", v1.ExternalAPIMiddleware, v1.OnePanelCreateWebsite)
+		// }
 		v1UsersGroup := v1Group.Group("/users")
 		v1UsersGroup.Use()
 		{
