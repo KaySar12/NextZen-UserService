@@ -46,14 +46,15 @@ import (
 )
 
 var (
-	authServer       = "http://accessmanager.local"
-	clientID         = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
-	clientSecret     = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL          = "http://accessmanager.local/application/o/nextzenos-oidc/"
-	callbackURL      = "http://nextzenos.local/v1/users/oidc/callback"
-	onePanelServer   = "http://nextweb.local"
-	onePanelName     = "nextzen"
-	onePanelPassword = "Smartyourlife123@*"
+	authServer          = "http://accessmanager.local"
+	clientID            = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
+	clientSecret        = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
+	authURL             = "http://accessmanager.local/application/o/nextzenos-oidc/"
+	callbackURL         = "http://nextzenos.local/v1/users/oidc/callback"
+	onePanelServer      = "http://nextweb.local"
+	onePanelName        = "nextzen"
+	onePanelPassword    = "Smartyourlife123@*"
+	authentik_api_token = "jidFioAIXpgl8awyk2O17K8W7vZzlXhOO0QXGxEhMDJdn9g747EQjmaI0i3e"
 )
 
 type OIDCSetting struct {
@@ -115,28 +116,27 @@ func PostUserRegister(c *gin.Context) {
 
 var limiter = rate.NewLimiter(rate.Every(time.Minute), 5)
 
+// TODO Cant call login every request(using for testing only)
 func ExternalAPIMiddleware(c *gin.Context) {
 	session := sessions.Default(c)
+	if err := OnePanelLogin(c); err != nil {
+		c.JSON(http.StatusUnauthorized, model.Result{
+			Success: common_err.SERVICE_ERROR,
+			Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+		})
+		c.Abort()
+		return
+	}
 	sessionId := session.Get("psession")
 
 	if sessionId == nil {
-		if err := OnePanelLogin(c); err != nil {
-			c.JSON(http.StatusUnauthorized, model.Result{
-				Success: common_err.SERVICE_ERROR,
-				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
-			})
-			c.Abort()
-			return
-		}
-		sessionId = session.Get("psession")
-		if sessionId == nil {
-			c.JSON(http.StatusInternalServerError, model.Result{
-				Success: common_err.SERVICE_ERROR,
-				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
-			})
-			c.Abort()
-			return
-		}
+		c.JSON(http.StatusInternalServerError, model.Result{
+			Success: common_err.SERVICE_ERROR,
+			Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+		})
+		c.Abort()
+		return
+
 	}
 
 	// Add sessionId to the request's Cookie header
@@ -164,13 +164,15 @@ func OnePanelLogin(c *gin.Context) error {
 	session := sessions.Default(c)
 	for _, cookie := range cookies {
 		session.Set(cookie.Name, cookie.Value)
-	}
+		session.Options(sessions.Options{
+			MaxAge: 3600, // 12hrs
+		})
 
+	}
 	if err := session.Save(); err != nil {
 		logger.Error("Failed to save session", zap.Error(err))
 		return err
 	}
-
 	return nil
 }
 
@@ -212,7 +214,6 @@ func OnePanelCreateWebsite(c *gin.Context) {
 	domain := json["domain"]
 	port := json["port"]
 	protocol := json["protocol"]
-	// useSSl := json["useSSL"]
 	var website model2.CreateWebsiteRequest
 	website.PrimaryDomain = domain
 	website.Type = "proxy"
@@ -263,6 +264,60 @@ func OnePanelCreateWebsite(c *gin.Context) {
 				Message: common_err.GetMsg(common_err.SUCCESS),
 				Data:    response,
 			})
+		return
+	} else {
+
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+		})
+}
+func OnePanelDeleteWebsite(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	domain := json["domain"]
+	var searchParam model2.SearchWebsiteRequest
+	searchParam.Name = domain
+	searchParam.Page = 1
+	searchParam.PageSize = 1
+	searchParam.OrderBy = "created_at"
+	searchParam.Order = "null"
+	searchParam.WebsiteGroupID = 0
+	headers := make(map[string]string)
+	for key, value := range c.Request.Header {
+		headers[key] = value[0]
+	}
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+	if err != nil {
+		c.JSON(common_err.SERVICE_ERROR,
+			model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+	}
+	if search.Data.Total > 0 {
+		var delete model2.DeleteWebsiteRequest
+		delete.ID = search.Data.Items[0].ID
+		delete.DeleteApp = false
+		delete.DeleteBackup = false
+		delete.ForceDelete = false
+		response, err := service.MyService.OnePanel().DeleteWebsite(delete, onePanelServer, headers)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{
+					Success: common_err.SERVICE_ERROR,
+					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+				})
+		}
+		c.JSON(common_err.SUCCESS,
+			model.Result{
+				Success: common_err.SUCCESS,
+				Message: common_err.GetMsg(common_err.SUCCESS),
+				Data:    response,
+			})
+		return
 	}
 	c.JSON(common_err.SUCCESS,
 		model.Result{
