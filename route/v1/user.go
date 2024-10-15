@@ -208,19 +208,22 @@ func OnePanelLogin(c *gin.Context) error {
 //				Data:    response,
 //			})
 //	}
+//
+
 func OnePanelCreateWebsite(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	domain := json["domain"]
 	port := json["port"]
 	protocol := json["protocol"]
+	host := json["host"]
 	var website model2.CreateWebsiteRequest
 	website.PrimaryDomain = domain
 	website.Type = "proxy"
 	website.Alias = domain
 	website.AppType = "installed"
 	website.WebSiteGroupID = 2
-	website.Proxy = "http://127.0.0.1:" + port
+	website.Proxy = protocol + "://" + host + ":" + port
 	portInt, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
 		log.Printf("Error converting port to integer: %v", err)
@@ -228,7 +231,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 	}
 	website.Port = portInt
 	website.ProxyProtocol = protocol
-	website.ProxyAddress = "127.0.0.1" + port
+	website.ProxyAddress = host + ":" + port
 	website.RuntimeType = "php"
 	headers := make(map[string]string)
 	for key, value := range c.Request.Header {

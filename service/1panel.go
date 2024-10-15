@@ -19,6 +19,8 @@ type OnePanelService interface {
 	SearchWebsite(m model2.SearchWebsiteRequest, baseUrl string, headers map[string]string) (model2.SearchWebsiteResponse, error)
 	CreateWebsite(m model2.CreateWebsiteRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 	DeleteWebsite(m model2.DeleteWebsiteRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
+	GetProxyWebsite(m model2.ProxyWebsiteRequest, baseUrl string, headers map[string]string) (model2.ProxyWebsiteResponse, error)
+	UpdateProxyWebsite(m model2.UpdateProxyRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 }
 
 var (
@@ -28,6 +30,67 @@ var (
 type onePanelService struct {
 }
 
+// TODO A lot of redundant code need refactor
+func (o *onePanelService) UpdateProxyWebsite(m model2.UpdateProxyRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
+	path := baseUrl + "/api/v1/websites/proxies/update"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.GenericResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.GenericResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
+
+func (o *onePanelService) GetProxyWebsite(m model2.ProxyWebsiteRequest, baseUrl string, headers map[string]string) (model2.ProxyWebsiteResponse, error) {
+	path := baseUrl + "/api/v1/websites/proxies"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.ProxyWebsiteResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.ProxyWebsiteResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.ProxyWebsiteResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.ProxyWebsiteResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.ProxyWebsiteResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.ProxyWebsiteResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
 func (o *onePanelService) SearchWebsite(m model2.SearchWebsiteRequest, baseUrl string, headers map[string]string) (model2.SearchWebsiteResponse, error) {
 	path := baseUrl + "/api/v1/websites/search"
 	reqBody, err := json.Marshal(m)

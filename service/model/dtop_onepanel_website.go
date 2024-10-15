@@ -84,3 +84,50 @@ type GenericResponse struct {
 	Data    struct {
 	} `json:"data"`
 }
+
+type ProxyWebsiteRequest struct {
+	ID int `json:"id"`
+}
+
+type ProxyWebsiteResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    []struct {
+		ID        int         `json:"id"`
+		Operate   string      `json:"operate"`
+		Enable    bool        `json:"enable"`
+		Cache     bool        `json:"cache"`
+		CacheTime int         `json:"cacheTime"`
+		CacheUnit string      `json:"cacheUnit"`
+		Name      string      `json:"name"`
+		Modifier  string      `json:"modifier"`
+		Match     string      `json:"match"`
+		ProxyPass string      `json:"proxyPass"`
+		ProxyHost string      `json:"proxyHost"`
+		Content   string      `json:"content"`
+		FilePath  string      `json:"filePath"`
+		Replaces  interface{} `json:"replaces"`
+		Sni       bool        `json:"sni"`
+	} `json:"data"`
+}
+
+type UpdateProxyRequest struct {
+	ID        int    `json:"id"`
+	Operate   string `json:"operate"`
+	Enable    bool   `json:"enable"`
+	Cache     bool   `json:"cache"`
+	CacheTime int    `json:"cacheTime"`
+	CacheUnit string `json:"cacheUnit"`
+	Name      string `json:"name"`
+	Modifier  string `json:"modifier"`
+	Match     string `json:"match"`
+	ProxyPass string `json:"proxyPass"`
+	ProxyHost string `json:"proxyHost"`
+	Content   string `json:"content"`
+	FilePath  string `json:"filePath"`
+	Replaces  struct {
+	} `json:"replaces"`
+	Sni           bool   `json:"sni"`
+	ProxyProtocol string `json:"proxyProtocol"`
+	ProxyAddress  string `json:"proxyAddress"`
+}
