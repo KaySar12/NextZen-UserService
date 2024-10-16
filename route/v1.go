@@ -55,6 +55,7 @@ func InitRouter() *gin.Engine {
 	// r.POST("/v1/1panel/website/search", v1.ExternalAPIMiddleware, v1.OnePanelLogin)
 	r.POST("/v1/1panel/website/create", v1.ExternalAPIMiddleware, v1.OnePanelCreateWebsite)
 	r.POST("/v1/1panel/website/delete", v1.ExternalAPIMiddleware, v1.OnePanelDeleteWebsite)
+	r.POST("/v1/1panel/website/update-proxy", v1.ExternalAPIMiddleware, v1.OnePanelUpdateProxyWebsite)
 	v1Group := r.Group("/v1")
 
 	v1Group.Use(jwt.JWT(

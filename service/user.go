@@ -35,7 +35,6 @@ type UserService interface {
 	DeleteAllUser()
 	GetUserInfoByUserName(userName string) (m model.UserDBModel)
 	GetAllUserName() (list []model.UserDBModel)
-
 	GetKeyPair() (*ecdsa.PrivateKey, *ecdsa.PublicKey)
 }
 

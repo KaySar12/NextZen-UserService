@@ -208,22 +208,85 @@ func OnePanelLogin(c *gin.Context) error {
 //				Data:    response,
 //			})
 //	}
-//
-
+func OnePanelUpdateProxyWebsite(c *gin.Context) {
+	json := make(map[string]string)
+	c.ShouldBind(&json)
+	domain := json["domain"]
+	port := json["port"]
+	hostname := json["hostname"]
+	protocol := json["protocol"]
+	var searchParam model2.SearchWebsiteRequest
+	searchParam.Name = domain
+	searchParam.Page = 1
+	searchParam.PageSize = 1
+	searchParam.OrderBy = "created_at"
+	searchParam.Order = "null"
+	searchParam.WebsiteGroupID = 0
+	headers := make(map[string]string)
+	for key, value := range c.Request.Header {
+		headers[key] = value[0]
+	}
+	var search model2.SearchWebsiteResponse
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+	if err != nil {
+		c.JSON(common_err.SERVICE_ERROR,
+			model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+	}
+	if search.Data.Total > 0 {
+		var proxy model2.ProxyWebsiteRequest
+		proxy.ID = search.Data.Items[0].ID
+		var proxyResult model2.ProxyWebsiteResponse
+		proxyResult, err := service.MyService.OnePanel().GetProxyWebsite(proxy, onePanelServer, headers)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{
+					Success: common_err.SERVICE_ERROR,
+					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+				})
+		}
+		var updateProxy model2.ProxyDetail
+		updateProxy = proxyResult.Data[0]
+		updateProxy.Operate = "edit"
+		updateProxy.ProxyPass = protocol + "://" + hostname + ":" + port
+		updateProxyResult, err := service.MyService.OnePanel().UpdateProxyWebsite(updateProxy, onePanelServer, headers)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{
+					Success: common_err.SERVICE_ERROR,
+					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+				})
+		}
+		c.JSON(common_err.SUCCESS,
+			model.Result{
+				Success: common_err.SUCCESS,
+				Message: common_err.GetMsg(common_err.SUCCESS),
+				Data:    updateProxyResult,
+			})
+		return
+	}
+	c.JSON(common_err.SUCCESS,
+		model.Result{
+			Success: common_err.SUCCESS,
+			Message: common_err.GetMsg(common_err.SUCCESS),
+		})
+}
 func OnePanelCreateWebsite(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	domain := json["domain"]
 	port := json["port"]
 	protocol := json["protocol"]
-	host := json["host"]
+	hostname := json["hostname"]
 	var website model2.CreateWebsiteRequest
 	website.PrimaryDomain = domain
 	website.Type = "proxy"
 	website.Alias = domain
 	website.AppType = "installed"
 	website.WebSiteGroupID = 2
-	website.Proxy = protocol + "://" + host + ":" + port
+	website.Proxy = protocol + "://" + hostname + ":" + port
 	portInt, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
 		log.Printf("Error converting port to integer: %v", err)
@@ -231,7 +294,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 	}
 	website.Port = portInt
 	website.ProxyProtocol = protocol
-	website.ProxyAddress = host + ":" + port
+	website.ProxyAddress = hostname + ":" + port
 	website.RuntimeType = "php"
 	headers := make(map[string]string)
 	for key, value := range c.Request.Header {
@@ -268,8 +331,6 @@ func OnePanelCreateWebsite(c *gin.Context) {
 				Data:    response,
 			})
 		return
-	} else {
-
 	}
 	c.JSON(common_err.SUCCESS,
 		model.Result{
@@ -435,10 +496,12 @@ func InitOIDC() {
 				oidcInit = true
 				failCount = 0
 				successCount++
+				// TODO will enable in production
 				// Exponential backoff with a cap
-				sleepTime = minSleep * time.Duration(successCount)
+				// sleepTime = minSleep * time.Duration(successCount)
 				if sleepTime > maxSleep {
-					sleepTime = maxSleep
+					// TODO will enable in production
+					// sleepTime = maxSleep
 				}
 
 			} else {
@@ -448,7 +511,8 @@ func InitOIDC() {
 				// Exponential backoff with a cap
 				sleepTime = minSleep * time.Duration(failCount)
 				if failCount > maxRetryBackoff {
-					sleepTime = minSleep * time.Duration(maxRetryBackoff)
+					// TODO will enable in production
+					// sleepTime = minSleep * time.Duration(maxRetryBackoff)
 				}
 				log.Printf("OIDC initialization failed: %v. Retrying in %v", err, sleepTime)
 			}
