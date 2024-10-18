@@ -37,7 +37,6 @@ remove_tag:
 	@${GIT} tag -d ${CUR_TAG}
 	@${GIT} push ${GIT_REMOTE} -d ${CUR_TAG}	
 check_tag:
-	@echo "Previous tag: $(PREV_TAG)";
 	@echo "Current tag: $(CUR_TAG)";  
 push_release_all:
 	${GORELEASER} release --clean  -f .goreleaser.yaml
