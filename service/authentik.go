@@ -40,6 +40,10 @@ func (a *authentikService) UpdateSettings(m model2.AuthentikCredentialsDBModel) 
 	var existing model2.AuthentikCredentialsDBModel
 	result := a.db.First(&existing)
 	if result.Error != nil {
+		if result.Error.Error() == "record not found" {
+			a.db.Create(&m)
+			return existing, nil
+		}
 		return existing, result.Error
 	}
 
