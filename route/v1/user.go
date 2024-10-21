@@ -316,6 +316,32 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			})
 	}
 	if search.Data.Total == 0 {
+		if protocol == "https" {
+			//TODO Apply Certificate and Enable HTTPS
+			var searchSSL model2.SearchSSLRequest
+			searchSSL.Page = 1
+			searchSSL.PageSize = 50
+			ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
+			if err != nil {
+				c.JSON(common_err.SERVICE_ERROR,
+					model.Result{
+						Success: common_err.SERVICE_ERROR,
+						Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+					})
+			}
+			if ssl.Data.Total == 0 {
+				createSSL, err := OnePanelApplyWebsiteSSl(domain, search.Data.Items[0].ID, headers)
+				if err != nil {
+					c.JSON(common_err.SERVICE_ERROR,
+						model.Result{
+							Success: common_err.SERVICE_ERROR,
+							Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+						})
+				}
+				fmt.Println(createSSL)
+			}
+
+		}
 		response, err := service.MyService.OnePanel().CreateWebsite(website, onePanelServer, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
@@ -337,6 +363,38 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			Success: common_err.SUCCESS,
 			Message: common_err.GetMsg(common_err.SUCCESS),
 		})
+}
+
+func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]string) (model2.CreateSSLResponse, error) {
+	var searchAcme model2.AcmeSearchRequest
+	searchAcme.Page = 1
+	searchAcme.PageSize = 50
+	acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
+	if err != nil {
+		return model2.CreateSSLResponse{}, err
+	}
+	if acme.Data.Total > 0 {
+		var createSSL model2.CreateSSLRequest
+		createSSL.ID = 1
+		createSSL.PrimaryDomain = domain
+		createSSL.OtherDomains = ""
+		createSSL.Provider = "http"
+		createSSL.WebsiteID = websiteId
+		createSSL.AcmeAccountID = acme.Data.Items[0].ID
+		createSSL.AutoRenew = true
+		createSSL.KeyType = "P256"
+		createSSL.PushDir = false
+		createSSL.Dir = ""
+		createSSL.Description = ""
+		createSSL.DisableCNAME = false
+		createSSL.Nameserver1 = ""
+		createSSL.Nameserver2 = ""
+		createSSL.ExecShell = false
+		createSSL.Shell = ""
+		createSSLRes, err := service.MyService.OnePanel().ApplyWebsiteSSl(createSSL, onePanelServer, headers)
+		return createSSLRes, err
+	}
+	return model2.CreateSSLResponse{}, err
 }
 func OnePanelDeleteWebsite(c *gin.Context) {
 	json := make(map[string]string)
