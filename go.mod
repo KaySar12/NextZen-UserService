@@ -2,8 +2,6 @@ module github.com/KaySar12/NextZen-UserService
 
 go 1.21
 
-toolchain go1.22.0
-
 require (
 	github.com/KaySar12/NextZen-Common v1.0.0-alpha6
 	github.com/coreos/go-oidc/v3 v3.11.0

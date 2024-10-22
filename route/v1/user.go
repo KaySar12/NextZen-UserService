@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	json2 "encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/png"
@@ -46,15 +47,15 @@ import (
 )
 
 var (
-	authServer          = "http://accessmanager.local"
-	clientID            = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
-	clientSecret        = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL             = "http://accessmanager.local/application/o/nextzenos-oidc/"
-	callbackURL         = "http://nextzenos.local/v1/users/oidc/callback"
-	onePanelServer      = "http://nextweb.local"
-	onePanelName        = "nextzen"
-	onePanelPassword    = "Smartyourlife123@*"
-	authentik_api_token = "jidFioAIXpgl8awyk2O17K8W7vZzlXhOO0QXGxEhMDJdn9g747EQjmaI0i3e"
+	authServer       = "http://accessmanager.local"
+	clientID         = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
+	clientSecret     = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
+	authURL          = "http://accessmanager.local/application/o/nextzenos-oidc/"
+	callbackURL      = "http://nextzenos.local/v1/users/oidc/callback"
+	onePanelServer   = "http://nextweb.local"
+	onePanelName     = "nextzen"
+	onePanelPassword = "Smartyourlife123@*"
+	//authentik_api_token = "jidFioAIXpgl8awyk2O17K8W7vZzlXhOO0QXGxEhMDJdn9g747EQjmaI0i3e"
 )
 
 type OIDCSetting struct {
@@ -176,38 +177,6 @@ func OnePanelLogin(c *gin.Context) error {
 	return nil
 }
 
-// func OnePanelLogin(c *gin.Context) {
-// 	var cred = model2.OnePanelCredentials{
-// 		Name:          onePanelName,
-// 		Password:      onePanelPassword,
-// 		IgnoreCaptcha: true,
-// 		Captcha:       "",
-// 		CaptchaID:     "",
-// 		AuthMethod:    "session",
-// 		Language:      "en",
-// 	}
-
-//		response, cookies, err := service.MyService.OnePanel().Login(cred, onePanelServer)
-//		if err != nil {
-//			c.JSON(common_err.SERVICE_ERROR,
-//				model.Result{
-//					Success: common_err.SERVICE_ERROR,
-//					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
-//				})
-//		}
-//		session := sessions.Default(c)
-//		for _, cookie := range cookies {
-//			session.Set(cookie.Name, cookie.Value)
-//			c.SetCookie(cookie.Name, cookie.Value, 3600, "/", "", false, true)
-//		}
-//		session.Save()
-//		c.JSON(common_err.SUCCESS,
-//			model.Result{
-//				Success: common_err.SUCCESS,
-//				Message: common_err.GetMsg(common_err.SUCCESS),
-//				Data:    response,
-//			})
-//	}
 func OnePanelUpdateProxyWebsite(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
@@ -247,7 +216,7 @@ func OnePanelUpdateProxyWebsite(c *gin.Context) {
 					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 				})
 		}
-		var updateProxy model2.ProxyDetail
+		updateProxy := model2.ProxyDetail{}
 		updateProxy = proxyResult.Data[0]
 		updateProxy.Operate = "edit"
 		updateProxy.ProxyPass = protocol + "://" + hostname + ":" + port
@@ -280,20 +249,21 @@ func OnePanelCreateWebsite(c *gin.Context) {
 	port := json["port"]
 	protocol := json["protocol"]
 	hostname := json["hostname"]
+	sslProvider := json["sslProvider"]
 	var website model2.CreateWebsiteRequest
 	website.PrimaryDomain = domain
 	website.Type = "proxy"
 	website.Alias = domain
 	website.AppType = "installed"
 	website.WebSiteGroupID = 2
-	website.Proxy = protocol + "://" + hostname + ":" + port
+	website.Proxy = "http://" + hostname + ":" + port
 	portInt, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
 		log.Printf("Error converting port to integer: %v", err)
 
 	}
 	website.Port = portInt
-	website.ProxyProtocol = protocol
+	website.ProxyProtocol = "http"
 	website.ProxyAddress = hostname + ":" + port
 	website.RuntimeType = "php"
 	headers := make(map[string]string)
@@ -316,32 +286,6 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			})
 	}
 	if search.Data.Total == 0 {
-		if protocol == "https" {
-			//TODO Apply Certificate and Enable HTTPS
-			var searchSSL model2.SearchSSLRequest
-			searchSSL.Page = 1
-			searchSSL.PageSize = 50
-			ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
-			if err != nil {
-				c.JSON(common_err.SERVICE_ERROR,
-					model.Result{
-						Success: common_err.SERVICE_ERROR,
-						Message: common_err.GetMsg(common_err.SERVICE_ERROR),
-					})
-			}
-			if ssl.Data.Total == 0 {
-				createSSL, err := OnePanelApplyWebsiteSSl(domain, search.Data.Items[0].ID, headers)
-				if err != nil {
-					c.JSON(common_err.SERVICE_ERROR,
-						model.Result{
-							Success: common_err.SERVICE_ERROR,
-							Message: common_err.GetMsg(common_err.SERVICE_ERROR),
-						})
-				}
-				fmt.Println(createSSL)
-			}
-
-		}
 		response, err := service.MyService.OnePanel().CreateWebsite(website, onePanelServer, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
@@ -350,13 +294,113 @@ func OnePanelCreateWebsite(c *gin.Context) {
 					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 				})
 		}
-		c.JSON(common_err.SUCCESS,
-			model.Result{
-				Success: common_err.SUCCESS,
-				Message: common_err.GetMsg(common_err.SUCCESS),
-				Data:    response,
-			})
-		return
+		search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{
+					Success: common_err.SERVICE_ERROR,
+					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+				})
+		}
+		if protocol == "https" {
+			//TODO Find SSL
+			var searchSSL model2.SearchSSLRequest
+			searchSSL.Page = 1
+			searchSSL.PageSize = 50
+			sslId := -1
+			ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
+			if err != nil {
+				c.JSON(common_err.SERVICE_ERROR,
+					model.Result{
+						Success: common_err.SERVICE_ERROR,
+						Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+					})
+			}
+
+			for _, item := range ssl.Data.Items {
+				if item.PrimaryDomain == domain && item.Organization == sslProvider {
+					sslId = item.ID
+					break
+				}
+			}
+			if sslId < 0 {
+				if sslProvider == "http" {
+					sslId, err = OnePanelApplyWebsiteSSl(domain, search.Data.Items[0].ID, headers)
+					if err != nil {
+						c.JSON(common_err.SUCCESS,
+							model.Result{
+								Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+								Message: fmt.Sprintf("Fail to upgrade %s from http to https", domain),
+								Data:    false,
+							})
+						return
+					}
+				} else {
+					sslId, err = IssueSelfSignedCert(domain, search.Data.Items[0].ID, headers, 3)
+					if err != nil {
+						c.JSON(common_err.SUCCESS,
+							model.Result{
+								Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+								Message: fmt.Sprintf("Fail to upgrade %s from http to https", domain),
+								Data:    false,
+							})
+						return
+					}
+				}
+			}
+			// TODO Enable HTTPS
+			var searchAcme model2.AcmeSearchRequest
+			acmeId := 0
+			searchAcme.Page = 1
+			searchAcme.PageSize = 50
+			if sslProvider == "http" {
+				acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
+				if err != nil {
+					c.JSON(common_err.SERVICE_ERROR,
+						model.Result{
+							Success: common_err.SERVICE_ERROR,
+							Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+						})
+					return
+				}
+				acmeId = acme.Data.Items[0].ID
+			}
+			search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+			if err != nil {
+				c.JSON(common_err.SERVICE_ERROR,
+					model.Result{
+						Success: common_err.SERVICE_ERROR,
+						Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+					})
+			}
+			updateWebsite, err := EnableWebsiteHttps(acmeId, sslId, search.Data.Items[0].ID, headers)
+			if err != nil {
+				c.JSON(common_err.SERVICE_ERROR,
+					model.Result{
+						Success: common_err.SERVICE_ERROR,
+						Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+					})
+				return
+			}
+			if updateWebsite.Code < 200 || updateWebsite.Code > 300 {
+				c.JSON(common_err.SUCCESS,
+					model.Result{
+						Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+						Message: fmt.Sprintf("Fail to upgrade %s from http to https", domain),
+						Data:    false,
+					})
+				return
+			}
+
+			c.JSON(common_err.SUCCESS,
+				model.Result{
+					Success: common_err.SUCCESS,
+					Message: common_err.GetMsg(common_err.SUCCESS),
+					Data:    response,
+				})
+			return
+		}
+
 	}
 	c.JSON(common_err.SUCCESS,
 		model.Result{
@@ -364,14 +408,77 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			Message: common_err.GetMsg(common_err.SUCCESS),
 		})
 }
-
-func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]string) (model2.CreateSSLResponse, error) {
+func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string, maxAttempts int) (int, error) {
+	if maxAttempts <= 0 {
+		return 0, errors.New("maximum attempts reached")
+	}
+	var searchSelfSignedCert model2.SelfSignedCertSearchRequest
+	searchSelfSignedCert.Page = 1
+	searchSelfSignedCert.PageSize = 50
+	selfsignedCert, err := service.MyService.OnePanel().SelfSignedCertSearch(searchSelfSignedCert, onePanelServer, headers)
+	if err != nil {
+		return 0, err
+	}
+	if selfsignedCert.Data.Total == 0 {
+		var createParam model2.CreateSelfSignedCertRequest
+		createParam.Name = ""
+		createParam.KeyType = "P256"
+		createParam.CommonName = ""
+		createParam.Country = ""
+		createParam.Organization = ""
+		createParam.OrganizationUint = ""
+		createParam.Province = ""
+		createParam.City = ""
+		createNewSelfSignCert, err := service.MyService.OnePanel().CreateSelfSignedCert(createParam, onePanelServer, headers)
+		if err != nil {
+			return 0, err
+		}
+		fmt.Println(createNewSelfSignCert)
+		return IssueSelfSignedCert(domain, websiteId, headers, maxAttempts-1)
+	} else {
+		var issueSelfSignedCertReq model2.SelfSignedIssueRequest
+		issueSelfSignedCertReq.KeyType = "P256"
+		issueSelfSignedCertReq.Domains = domain
+		issueSelfSignedCertReq.ID = selfsignedCert.Data.Items[0].ID
+		issueSelfSignedCertReq.Time = 10
+		issueSelfSignedCertReq.Unit = "year"
+		issueSelfSignedCertReq.PushDir = false
+		issueSelfSignedCertReq.Dir = ""
+		issueSelfSignedCertReq.AutoRenew = true
+		issueSelfSignedCertReq.Description = ""
+		issueSelfSignedCertReq.ExecShell = false
+		issueSelfSignedCertReq.Shell = ""
+		issueSelfSignedCertRes, err := service.MyService.OnePanel().IssueSelfSignedCert(issueSelfSignedCertReq, onePanelServer, headers)
+		if err != nil {
+			return 0, err
+		}
+		fmt.Println(issueSelfSignedCertRes)
+		var searchSSL model2.SearchSSLRequest
+		searchSSL.Page = 1
+		searchSSL.PageSize = 50
+		ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
+		if err != nil {
+			return 0, err
+		}
+		for _, item := range ssl.Data.Items {
+			if item.Provider == "selfSigned" {
+				for _, website := range item.Websites {
+					if website.ID == websiteId {
+						return item.ID, nil
+					}
+				}
+			}
+		}
+		return 0, err
+	}
+}
+func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]string) (int, error) {
 	var searchAcme model2.AcmeSearchRequest
 	searchAcme.Page = 1
 	searchAcme.PageSize = 50
 	acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
 	if err != nil {
-		return model2.CreateSSLResponse{}, err
+		return 0, err
 	}
 	if acme.Data.Total > 0 {
 		var createSSL model2.CreateSSLRequest
@@ -392,9 +499,30 @@ func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]st
 		createSSL.ExecShell = false
 		createSSL.Shell = ""
 		createSSLRes, err := service.MyService.OnePanel().ApplyWebsiteSSl(createSSL, onePanelServer, headers)
-		return createSSLRes, err
+		return createSSLRes.Data.ID, err
 	}
-	return model2.CreateSSLResponse{}, err
+	return 0, err
+}
+func EnableWebsiteHttps(acmeAccountID int, websiteSSLID int, websiteId int, headers map[string]string) (model2.GenericResponse, error) {
+	var updateConfig model2.WebsiteHttpsConfigRequest
+	updateConfig.AcmeAccountID = acmeAccountID
+	updateConfig.Enable = true
+	updateConfig.WebsiteSSLID = websiteSSLID
+	updateConfig.WebsiteID = websiteId
+	updateConfig.Type = "existed"
+	updateConfig.ImportType = "paste"
+	updateConfig.PrivateKey = ""
+	updateConfig.Certificate = ""
+	updateConfig.PrivateKeyPath = ""
+	updateConfig.HTTPConfig = "HTTPToHTTPS"
+	updateConfig.Hsts = true
+	updateConfig.Algorithm = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:!aNULL:!eNULL:!EXPORT:!DSS:!DES:!RC4:!3DES:!MD5:!PSK:!KRB5:!SRP:!CAMELLIA:!SEED"
+	updateConfig.SSLProtocol = append(updateConfig.SSLProtocol, "TLSv1.3", "TLSv1.2", "TLSv1.1", "TLSv1")
+	updateWebsite, err := service.MyService.OnePanel().UpdateWebsiteProtocol(updateConfig, onePanelServer, headers)
+	if err != nil {
+		return model2.GenericResponse{}, err
+	}
+	return updateWebsite, nil
 }
 func OnePanelDeleteWebsite(c *gin.Context) {
 	json := make(map[string]string)
@@ -739,14 +867,14 @@ func OIDCValidateToken(c *gin.Context) {
 	var validateToken model2.AuthentikToken
 	validateToken, err = service.MyService.Authentik().ValidateToken(clientID, clientSecret, accessToken, authServer)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
+		c.JSON(common_err.SUCCESS, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
 	}
 	if !validateToken.Active {
-		c.JSON(http.StatusUnauthorized, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
+		c.JSON(common_err.SUCCESS, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 		return
 	}
-	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
+	c.JSON(common_err.SUCCESS, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 }
 func OIDCLogout(c *gin.Context) {
 	json := make(map[string]string)

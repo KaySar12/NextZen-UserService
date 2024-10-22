@@ -22,9 +22,12 @@ type OnePanelService interface {
 	GetProxyWebsite(m model2.ProxyWebsiteRequest, baseUrl string, headers map[string]string) (model2.ProxyWebsiteResponse, error)
 	UpdateProxyWebsite(m model2.ProxyDetail, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 	AcmeAccountSearch(m model2.AcmeSearchRequest, baseUrl string, headers map[string]string) (model2.AcmeSearchResponse, error)
+	SelfSignedCertSearch(m model2.SelfSignedCertSearchRequest, baseUrl string, headers map[string]string) (model2.SelfSignedCertSearchResponse, error)
+	IssueSelfSignedCert(m model2.SelfSignedIssueRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
+	CreateSelfSignedCert(m model2.CreateSelfSignedCertRequest, baseUrl string, headers map[string]string) (model2.CreateSelfSignedCertResponse, error)
 	ApplyWebsiteSSl(m model2.CreateSSLRequest, baseUrl string, headers map[string]string) (model2.CreateSSLResponse, error)
 	SearchWebsiteSSl(m model2.SearchSSLRequest, baseUrl string, headers map[string]string) (model2.SearchSSLResponse, error)
-	//UpdateWebsiteProtocol
+	UpdateWebsiteProtocol(m model2.WebsiteHttpsConfigRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 }
 
 var (
@@ -35,6 +38,123 @@ type onePanelService struct {
 }
 
 // TODO A lot of redundant code need refactor
+
+func (o *onePanelService) UpdateWebsiteProtocol(m model2.WebsiteHttpsConfigRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
+	path := baseUrl + fmt.Sprintf("/api/v1/websites/%d/https", m.WebsiteID)
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.GenericResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.GenericResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
+func (o *onePanelService) SelfSignedCertSearch(m model2.SelfSignedCertSearchRequest, baseUrl string, headers map[string]string) (model2.SelfSignedCertSearchResponse, error) {
+	path := "/api/v1/websites/ca/search"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.SelfSignedCertSearchResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.SelfSignedCertSearchResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.SelfSignedCertSearchResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.SelfSignedCertSearchResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.SelfSignedCertSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.SelfSignedCertSearchResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
+func (o *onePanelService) CreateSelfSignedCert(m model2.CreateSelfSignedCertRequest, baseUrl string, headers map[string]string) (model2.CreateSelfSignedCertResponse, error) {
+	path := baseUrl + "/api/v1/websites/ca"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.CreateSelfSignedCertResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.CreateSelfSignedCertResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.CreateSelfSignedCertResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.CreateSelfSignedCertResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.CreateSelfSignedCertResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.CreateSelfSignedCertResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
+func (o *onePanelService) IssueSelfSignedCert(m model2.SelfSignedIssueRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
+	path := "/api/v1/websites/ca/obtain"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.GenericResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.GenericResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
 func (o *onePanelService) SearchWebsiteSSl(m model2.SearchSSLRequest, baseUrl string, headers map[string]string) (model2.SearchSSLResponse, error) {
 	path := baseUrl + "/api/v1/websites/ssl/search"
 	reqBody, err := json.Marshal(m)
