@@ -92,8 +92,9 @@ type SelfSignedCertSearchRequest struct {
 	PageSize int `json:"pageSize"`
 }
 type SearchSSLRequest struct {
-	Page     int `json:"page"`
-	PageSize int `json:"pageSize"`
+	AcmeAccountID string `json:"acmeAccountID"`
+	Page          int    `json:"page"`
+	PageSize      int    `json:"pageSize"`
 }
 type SearchSSLResponse struct {
 	Code    int    `json:"code"`
@@ -183,6 +184,7 @@ type SelfSignedCertSearchResponse struct {
 		} `json:"items"`
 	} `json:"data"`
 }
+
 type WebsiteDetail struct {
 	ID             int         `json:"id"`
 	CreatedAt      time.Time   `json:"createdAt"`

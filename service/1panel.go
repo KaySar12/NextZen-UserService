@@ -69,7 +69,7 @@ func (o *onePanelService) UpdateWebsiteProtocol(m model2.WebsiteHttpsConfigReque
 	return result, nil
 }
 func (o *onePanelService) SelfSignedCertSearch(m model2.SelfSignedCertSearchRequest, baseUrl string, headers map[string]string) (model2.SelfSignedCertSearchResponse, error) {
-	path := "/api/v1/websites/ca/search"
+	path := baseUrl + "/api/v1/websites/ca/search"
 	reqBody, err := json.Marshal(m)
 	if err != nil {
 		return model2.SelfSignedCertSearchResponse{}, fmt.Errorf("error marshaling request body: %v", err)
@@ -127,7 +127,7 @@ func (o *onePanelService) CreateSelfSignedCert(m model2.CreateSelfSignedCertRequ
 	return result, nil
 }
 func (o *onePanelService) IssueSelfSignedCert(m model2.SelfSignedIssueRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
-	path := "/api/v1/websites/ca/obtain"
+	path := baseUrl + "/api/v1/websites/ca/obtain"
 	reqBody, err := json.Marshal(m)
 	if err != nil {
 		return model2.GenericResponse{}, fmt.Errorf("error marshaling request body: %v", err)
