@@ -99,43 +99,56 @@ type SearchSSLRequest struct {
 type SearchSSLResponse struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Data    struct {
-		Total int `json:"total"`
-		Items []struct {
-			ID            int             `json:"id"`
-			CreatedAt     time.Time       `json:"createdAt"`
-			UpdatedAt     time.Time       `json:"updatedAt"`
-			PrimaryDomain string          `json:"primaryDomain"`
-			PrivateKey    string          `json:"privateKey"`
-			Pem           string          `json:"pem"`
-			Domains       string          `json:"domains"`
-			CertURL       string          `json:"certURL"`
-			Type          string          `json:"type"`
-			Provider      string          `json:"provider"`
-			Organization  string          `json:"organization"`
-			DNSAccountID  int             `json:"dnsAccountId"`
-			AcmeAccountID int             `json:"acmeAccountId"`
-			CaID          int             `json:"caId"`
-			AutoRenew     bool            `json:"autoRenew"`
-			ExpireDate    time.Time       `json:"expireDate"`
-			StartDate     time.Time       `json:"startDate"`
-			Status        string          `json:"status"`
-			Message       string          `json:"message"`
-			KeyType       string          `json:"keyType"`
-			PushDir       bool            `json:"pushDir"`
-			Dir           string          `json:"dir"`
-			Description   string          `json:"description"`
-			SkipDNS       bool            `json:"skipDNS"`
-			Nameserver1   string          `json:"nameserver1"`
-			Nameserver2   string          `json:"nameserver2"`
-			DisableCNAME  bool            `json:"disableCNAME"`
-			ExecShell     bool            `json:"execShell"`
-			Shell         string          `json:"shell"`
-			AcmeAccount   AcmeAccount     `json:"acmeAccount"`
-			DNSAccount    DNSAccount      `json:"dnsAccount"`
-			Websites      []WebsiteDetail `json:"websites"`
-			LogPath       string          `json:"logPath"`
-		} `json:"items"`
+	Data    []struct {
+		ID            int       `json:"id"`
+		CreatedAt     time.Time `json:"createdAt"`
+		UpdatedAt     time.Time `json:"updatedAt"`
+		PrimaryDomain string    `json:"primaryDomain"`
+		PrivateKey    string    `json:"privateKey"`
+		Pem           string    `json:"pem"`
+		Domains       string    `json:"domains"`
+		CertURL       string    `json:"certURL"`
+		Type          string    `json:"type"`
+		Provider      string    `json:"provider"`
+		Organization  string    `json:"organization"`
+		DNSAccountID  int       `json:"dnsAccountId"`
+		AcmeAccountID int       `json:"acmeAccountId"`
+		CaID          int       `json:"caId"`
+		AutoRenew     bool      `json:"autoRenew"`
+		ExpireDate    time.Time `json:"expireDate"`
+		StartDate     time.Time `json:"startDate"`
+		Status        string    `json:"status"`
+		Message       string    `json:"message"`
+		KeyType       string    `json:"keyType"`
+		PushDir       bool      `json:"pushDir"`
+		Dir           string    `json:"dir"`
+		Description   string    `json:"description"`
+		SkipDNS       bool      `json:"skipDNS"`
+		Nameserver1   string    `json:"nameserver1"`
+		Nameserver2   string    `json:"nameserver2"`
+		DisableCNAME  bool      `json:"disableCNAME"`
+		ExecShell     bool      `json:"execShell"`
+		Shell         string    `json:"shell"`
+		AcmeAccount   struct {
+			ID         int       `json:"id"`
+			CreatedAt  time.Time `json:"createdAt"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Email      string    `json:"email"`
+			URL        string    `json:"url"`
+			Type       string    `json:"type"`
+			EabKid     string    `json:"eabKid"`
+			EabHmacKey string    `json:"eabHmacKey"`
+			KeyType    string    `json:"keyType"`
+		} `json:"acmeAccount"`
+		DNSAccount struct {
+			ID        int       `json:"id"`
+			CreatedAt time.Time `json:"createdAt"`
+			UpdatedAt time.Time `json:"updatedAt"`
+			Name      string    `json:"name"`
+			Type      string    `json:"type"`
+		} `json:"dnsAccount"`
+		Websites interface{} `json:"websites"`
+		LogPath  string      `json:"logPath"`
 	} `json:"data"`
 }
 type WebsiteHttpsConfigRequest struct {
@@ -184,7 +197,9 @@ type SelfSignedCertSearchResponse struct {
 		} `json:"items"`
 	} `json:"data"`
 }
-
+type DeleteSSLRequest struct {
+	Ids []int `json:"ids"`
+}
 type WebsiteDetail struct {
 	ID             int         `json:"id"`
 	CreatedAt      time.Time   `json:"createdAt"`

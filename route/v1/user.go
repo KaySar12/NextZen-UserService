@@ -47,14 +47,15 @@ import (
 )
 
 var (
-	authServer       = "http://accessmanager.local"
-	clientID         = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
-	clientSecret     = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL          = "http://accessmanager.local/application/o/nextzenos-oidc/"
-	callbackURL      = "http://nextzenos.local/v1/users/oidc/callback"
-	onePanelServer   = "http://nextweb.local"
-	onePanelName     = "nextzen"
-	onePanelPassword = "Smartyourlife123@*"
+	authServer           = "http://accessmanager.local"
+	clientID             = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
+	clientSecret         = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
+	authURL              = "http://accessmanager.local/application/o/nextzenos-oidc/"
+	callbackURL          = "http://nextzenos.local/v1/users/oidc/callback"
+	onePanelServer       = "http://nextweb.local"
+	onePanelName         = "nextzen"
+	onePanelPassword     = "Smartyourlife123@*"
+	onePanelEntranceCode = "nextweb"
 	//authentik_api_token = "jidFioAIXpgl8awyk2O17K8W7vZzlXhOO0QXGxEhMDJdn9g747EQjmaI0i3e"
 )
 
@@ -155,7 +156,7 @@ func OnePanelLogin(c *gin.Context) error {
 		Language:      "en",
 	}
 
-	response, cookies, err := service.MyService.OnePanel().Login(cred, onePanelServer)
+	response, cookies, err := service.MyService.OnePanel().Login(cred, onePanelServer, onePanelEntranceCode)
 	fmt.Println(response)
 	if err != nil {
 		logger.Error("OnePanel login failed", zap.Error(err))
@@ -303,8 +304,8 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		if sslProvider == "selfSigned" {
 			searchSSLParam.AcmeAccountID = strconv.Itoa(acmeId)
 		}
-		searchSSLParam.Page = 1
-		searchSSLParam.PageSize = 50
+		searchSSLParam.Page = 0
+		searchSSLParam.PageSize = 0
 		searchSSL, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSLParam, onePanelServer, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
@@ -313,7 +314,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 				})
 		}
-		for _, item := range searchSSL.Data.Items {
+		for _, item := range searchSSL.Data {
 			if item.Provider == sslProvider && item.PrimaryDomain == domain {
 				sslId = item.ID
 				break
@@ -433,8 +434,8 @@ func OnePanelCreateWebsite(c *gin.Context) {
 		if protocol == "https" {
 			//TODO Find SSL
 			var searchSSL model2.SearchSSLRequest
-			searchSSL.Page = 1
-			searchSSL.PageSize = 50
+			searchSSL.Page = 0
+			searchSSL.PageSize = 0
 			sslId := -1
 			ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
 			if err != nil {
@@ -445,7 +446,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 					})
 			}
 
-			for _, item := range ssl.Data.Items {
+			for _, item := range ssl.Data {
 				if item.PrimaryDomain == domain && item.Provider == sslProvider {
 					sslId = item.ID
 					break
@@ -479,8 +480,8 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			// TODO Enable HTTPS
 			var searchAcme model2.AcmeSearchRequest
 			acmeId := 0
-			searchAcme.Page = 1
-			searchAcme.PageSize = 50
+			searchAcme.Page = 0
+			searchAcme.PageSize = 0
 			if sslProvider == "http" {
 				acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
 				if err != nil {
@@ -541,7 +542,7 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 	}
 	var searchSelfSignedCert model2.SelfSignedCertSearchRequest
 	searchSelfSignedCert.Page = 1
-	searchSelfSignedCert.PageSize = 50
+	searchSelfSignedCert.PageSize = 1000
 	selfsignedCert, err := service.MyService.OnePanel().SelfSignedCertSearch(searchSelfSignedCert, onePanelServer, headers)
 	if err != nil {
 		return 0, err
@@ -581,13 +582,13 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 		}
 		fmt.Println(issueSelfSignedCertRes)
 		var searchSSL model2.SearchSSLRequest
-		searchSSL.Page = 1
-		searchSSL.PageSize = 50
+		searchSSL.Page = 0
+		searchSSL.PageSize = 0
 		ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
 		if err != nil {
 			return 0, err
 		}
-		for _, item := range ssl.Data.Items {
+		for _, item := range ssl.Data {
 			if item.PrimaryDomain == domain {
 				return item.ID, nil
 			}
@@ -597,8 +598,8 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 }
 func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]string) (int, error) {
 	var searchAcme model2.AcmeSearchRequest
-	searchAcme.Page = 1
-	searchAcme.PageSize = 50
+	searchAcme.Page = 0
+	searchAcme.PageSize = 0
 	acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
 	if err != nil {
 		return 0, err
@@ -651,6 +652,16 @@ func OnePanelDeleteWebsite(c *gin.Context) {
 	json := make(map[string]string)
 	c.ShouldBind(&json)
 	domain := json["domain"]
+	deleteSSL, err := strconv.ParseBool(json["deleteSSL"])
+	if err != nil {
+		c.JSON(common_err.SERVICE_ERROR,
+			model.Result{
+				Success: common_err.SERVICE_ERROR,
+				Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+			})
+	}
+	test := json["deleteSSL"]
+	fmt.Println(test)
 	var searchParam model2.SearchWebsiteRequest
 	searchParam.Name = domain
 	searchParam.Page = 1
@@ -690,7 +701,45 @@ func OnePanelDeleteWebsite(c *gin.Context) {
 				Message: common_err.GetMsg(common_err.SUCCESS),
 				Data:    response,
 			})
-		return
+	}
+	if deleteSSL {
+		var searchSSLParam model2.SearchSSLRequest
+		searchSSLParam.AcmeAccountID = ""
+		searchSSLParam.Page = 0
+		searchSSLParam.PageSize = 0
+		searchSSL, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSLParam, onePanelServer, headers)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{
+					Success: common_err.SERVICE_ERROR,
+					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+				})
+		}
+		if len(searchSSL.Data) > 0 {
+			var deleleSSL model2.DeleteSSLRequest
+			for _, ssl := range searchSSL.Data {
+				if ssl.PrimaryDomain == domain {
+					deleleSSL.Ids = append(deleleSSL.Ids, ssl.ID)
+				}
+			}
+			if len(deleleSSL.Ids) > 0 {
+				deleteResult, err := service.MyService.OnePanel().DeleteWebsiteSSL(deleleSSL, onePanelServer, headers)
+				if err != nil {
+					c.JSON(common_err.SERVICE_ERROR,
+						model.Result{
+							Success: common_err.SERVICE_ERROR,
+							Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+						})
+				}
+				fmt.Println(deleteResult)
+				c.JSON(common_err.SUCCESS,
+					model.Result{
+						Success: common_err.SUCCESS,
+						Message: common_err.GetMsg(common_err.SUCCESS),
+					})
+				return
+			}
+		}
 	}
 	c.JSON(common_err.SUCCESS,
 		model.Result{
@@ -780,7 +829,7 @@ var oidcInit bool
 func InitOIDC() {
 	const (
 		maxSleep        = 60 * time.Second
-		minSleep        = 10 * time.Second
+		minSleep        = 3 * time.Second
 		maxRetryBackoff = 5 // Cap retry backoff to 5 attempts
 	)
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,11 +12,10 @@ import (
 )
 
 type OnePanelService interface {
-	Login(m model2.OnePanelCredentials, baseURL string) (model2.LoginResponse, []*http.Cookie, error)
+	Login(m model2.OnePanelCredentials, baseURL string, entranceCode string) (model2.LoginResponse, []*http.Cookie, error)
 	Logout(m model2.OnePanelCredentials, baseURL string) (model2.LogoutResponse, error)
 	HealthCheck(baseURL string) (string, error)
 	SearchInstalledApp(p model2.InstalledAppRequest, baseURL string) (model2.InstalledAppResponse, error)
-	// InstallApp()
 	SearchWebsite(m model2.SearchWebsiteRequest, baseUrl string, headers map[string]string) (model2.SearchWebsiteResponse, error)
 	CreateWebsite(m model2.CreateWebsiteRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 	DeleteWebsite(m model2.DeleteWebsiteRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
@@ -28,6 +28,7 @@ type OnePanelService interface {
 	ApplyWebsiteSSl(m model2.CreateSSLRequest, baseUrl string, headers map[string]string) (model2.CreateSSLResponse, error)
 	SearchWebsiteSSl(m model2.SearchSSLRequest, baseUrl string, headers map[string]string) (model2.SearchSSLResponse, error)
 	UpdateWebsiteProtocol(m model2.WebsiteHttpsConfigRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
+	DeleteWebsiteSSL(m model2.DeleteSSLRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 }
 
 var (
@@ -38,7 +39,35 @@ type onePanelService struct {
 }
 
 // TODO A lot of redundant code need refactor
-
+func (o *onePanelService) DeleteWebsiteSSL(m model2.DeleteSSLRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
+	path := baseUrl + "/api/v1/websites/ssl/del"
+	reqBody, err := json.Marshal(m)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error marshaling request body: %v", err)
+	}
+	req, err := http.NewRequest("POST", path, bytes.NewReader(reqBody))
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.GenericResponse{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.GenericResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.GenericResponse{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
 func (o *onePanelService) UpdateWebsiteProtocol(m model2.WebsiteHttpsConfigRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
 	path := baseUrl + fmt.Sprintf("/api/v1/websites/%d/https", m.WebsiteID)
 	reqBody, err := json.Marshal(m)
@@ -418,7 +447,7 @@ func (o *onePanelService) SearchInstalledApp(m model2.InstalledAppRequest, baseU
 
 	return result, nil
 }
-func (o *onePanelService) Login(m model2.OnePanelCredentials, baseURL string) (model2.LoginResponse, []*http.Cookie, error) {
+func (o *onePanelService) Login(m model2.OnePanelCredentials, baseURL string, entranceCode string) (model2.LoginResponse, []*http.Cookie, error) {
 	path := baseURL + prefixV1 + "/auth/login"
 
 	// Create the request body by marshaling the credentials into JSON
@@ -433,7 +462,7 @@ func (o *onePanelService) Login(m model2.OnePanelCredentials, baseURL string) (m
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-
+	req.Header.Set("Entrancecode", base64.StdEncoding.EncodeToString([]byte(entranceCode)))
 	// Reuse the HTTP client (consider making it a field in onePanelService)
 	client := &http.Client{}
 	resp, err := client.Do(req)
