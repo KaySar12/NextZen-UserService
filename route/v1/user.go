@@ -14,7 +14,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	url2 "net/url"
 	"os"
 	"path"
@@ -47,16 +46,15 @@ import (
 )
 
 var (
-	authServer           = "http://accessmanager.local"
-	clientID             = "6KwKSxLCtaQ4r6HoAn3gdNMbNOAf75j3SejLIAx7"
-	clientSecret         = "PE05fcDP4qESUmyZ1TNYpZNBxRPq70VpFI81vehsoJ6WhGz5yPXMljrFrOdMRdRhrYmF03fHWTZHgO9ZdNENrLN13BzL8CAgtEkTsyjXfgx9GvISheIjYfpSfvo219fL"
-	authURL              = "http://accessmanager.local/application/o/nextzenos-oidc/"
-	callbackURL          = "http://nextzenos.local/v1/users/oidc/callback"
-	onePanelServer       = "http://nextweb.local"
+	authServer           = "https://account.nextzenvn.com"
+	clientID             = "WzN5QB9e0LfCSAYTB542RLpIGKcAWNNZgVbeTLaz"
+	clientSecret         = "D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fPi6B9IFe3aDBo8x"
+	authURL              = "https://account.nextzenvn.com/application/o/nextzenos/"
+	callbackURL          = "https://home.nextzenvn.com/v1/users/oidc/callback"
+	onePanelServer       = "https://web.nextzenvn.com/"
 	onePanelName         = "nextzen"
 	onePanelPassword     = "Smartyourlife123@*"
-	onePanelEntranceCode = "nextweb"
-	//authentik_api_token = "jidFioAIXpgl8awyk2O17K8W7vZzlXhOO0QXGxEhMDJdn9g747EQjmaI0i3e"
+	onePanelEntranceCode = ""
 )
 
 type OIDCSetting struct {
@@ -884,7 +882,7 @@ func CheckOIDCInit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !oidcInit {
 			log.Println("Provider is Offline")
-			c.JSON(http.StatusServiceUnavailable, model.Result{Success: common_err.OIDC_OFFLINE, Message: "Authentik Server is Offline"})
+			//c.JSON(http.StatusServiceUnavailable, model.Result{Success: common_err.OIDC_OFFLINE, Message: "Authentik Server is Offline"})
 			return
 		}
 		c.Next()
@@ -1049,18 +1047,17 @@ func OIDCValidateToken(c *gin.Context) {
 	c.JSON(common_err.SUCCESS, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN)})
 }
 func OIDCLogout(c *gin.Context) {
-	json := make(map[string]string)
-	c.ShouldBind(&json)
-	flow := "/if/flow/default-authentication-flow/"
-	next := "/application/o/authorize/"
-
-	client := "client_id=" + clientID
-	redirect_uri := "&redirect_uri=" + url.QueryEscape(callbackURL)
-	response_type := "&response_type=code"
-	scope := "&scope=openid+profile+email+" + url.QueryEscape("goauthentik.io/api")
-	state := "&state=" + url.QueryEscape("/#/profile")
-	fullURL := authServer + flow + "?" + "next=" + url.QueryEscape(next+"?"+client+redirect_uri+response_type+scope+state)
-
+	// json := make(map[string]string)
+	// c.ShouldBind(&json)
+	// flow := "/if/flow/default-authentication-flow/"
+	// next := "/application/o/authorize/"
+	// client := "client_id=" + clientID
+	// redirect_uri := "&redirect_uri=" + url.QueryEscape(callbackURL)
+	// response_type := "&response_type=code"
+	// scope := "&scope=openid+profile+email+" + url.QueryEscape("goauthentik.io/api")
+	// state := "&state=" + url.QueryEscape("/#/profile")
+	//fullURL := authServer + flow + "?" + "next=" + url.QueryEscape(next+"?"+client+redirect_uri+response_type+scope+state)
+	fullURL := "https://home.nextzenvn.com/outpost.goauthentik.io/sign_out"
 	c.JSON(http.StatusOK, model.Result{Success: common_err.ERROR_AUTH_TOKEN, Message: common_err.GetMsg(common_err.ERROR_AUTH_TOKEN), Data: fullURL})
 }
 func OIDCProfile(c *gin.Context) {
@@ -1943,7 +1940,7 @@ func DeleteUserAll(c *gin.Context) {
 // 		})
 // }
 
-func GetUserStatus(c *gin.Context) {
+func InitializedUser(c *gin.Context) {
 	data := make(map[string]interface{}, 2)
 	key := uuid.NewV4().String()
 	service.UserRegisterHash[key] = key

@@ -12,13 +12,17 @@ CUR_DIR=$(PWD)
 CUR_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | tail -n1 | sed 's/-[0-9]*-g[0-9a-f]*//')
 PREV_TAG ?= $(shell git describe --tags --match '*.*.*' | sort -V | head -n2 | tail -n1 | sed 's/-[0-9]*-g[0-9a-f]*//')
 ARCHIVE_PATH=buildzip
-PACKAGE_NAME=$(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
+ifeq ($(TAG),)
+PACKAGE_NAME := $(OS)-$(ARCHITECHTURE)-nextzenos-user-service
+else
+PACKAGE_NAME := $(OS)-$(ARCHITECHTURE)-nextzenos-user-service-$(TAG)
+endif
 COMMIT_MESSAGE ?="update"
 build_service:
 	$(GORELEASERBUILD) --clean --snapshot -f .goreleaser.debug.yaml --id $(SERVICE)-$(ARCHITECHTURE)
 
 package:
-	 cp -f $(CUR_DIR)/dist/$(SERVICE)-$(ARCHITECHTURE)_$(OS)_$(ARCHITECHTURE)_$(VERSION)/$(BIN_PATH)/$(SERVICE) $(CUR_DIR)/$(BIN_PATH) \
+	 cp  $(CUR_DIR)/dist/$(SERVICE)-$(ARCHITECHTURE)_$(OS)_$(ARCHITECHTURE)_$(VERSION)/$(BIN_PATH)/$(SERVICE) $(CUR_DIR)/$(BIN_PATH) \
 	 && tar -czvf $(PACKAGE_NAME).tar.gz $(CUR_DIR)/$(BUILD_PATH)
 
 archive_package:
