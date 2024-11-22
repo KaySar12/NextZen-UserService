@@ -7,6 +7,16 @@ LogSaveName = user-service
 LogFileExt = log
 DBPath     = /var/lib/casaos/db
 UserDataPath = /var/lib/casaos
-OMVServer = http://10.0.0.4:1081/rpc.php
-SecretKey = N1PCdw3M2B1TfJhoaY2mL736p2vCUc47
-AuthentikServer = http://10.0.0.26:9000
+
+[oidc]
+AuthServer = https://account.nextzenvn.com
+ClientID = WzN5QB9e0LfCSAYTB542RLpIGKcAWNNZgVbeTLaz
+ClientSecret = D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fPi6B9IFe3aDBo8x
+AuthURL = https://account.nextzenvn.com/application/o/nextzenos/
+CallbackURL = https://home.nextzenvn.com/v1/users/oidc/callback
+
+[nextweb]
+Server = https://127.0.0.1:10086
+UserName = nextzen
+Password = Smartyourlife123@*
+EntranceCode = 

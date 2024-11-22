@@ -15,15 +15,14 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
-
-	"github.com/KaySar12/NextZen-UserService/pkg/config"
 )
 
 var (
 	// We're using a 32 byte long secret key.
 	// This is probably something you generate first
 	// then put into and environment variable.
-	secretKey string = config.AppInfo.SecretKey
+	// secretKey string = config.AppInfo.SecretKey
+	secretKey string = ""
 )
 
 func GetMD5ByStr(str string) string {

@@ -46,15 +46,11 @@ import (
 )
 
 var (
-	authServer           = "https://account.nextzenvn.com"
-	clientID             = "WzN5QB9e0LfCSAYTB542RLpIGKcAWNNZgVbeTLaz"
-	clientSecret         = "D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fPi6B9IFe3aDBo8x"
-	authURL              = "https://account.nextzenvn.com/application/o/nextzenos/"
-	callbackURL          = "https://home.nextzenvn.com/v1/users/oidc/callback"
-	onePanelServer       = "https://web.nextzenvn.com/"
-	onePanelName         = "nextzen"
-	onePanelPassword     = "Smartyourlife123@*"
-	onePanelEntranceCode = ""
+	authServer   string
+	clientID     string
+	clientSecret string
+	authURL      string
+	callbackURL  string
 )
 
 type OIDCSetting struct {
@@ -145,8 +141,8 @@ func ExternalAPIMiddleware(c *gin.Context) {
 }
 func OnePanelLogin(c *gin.Context) error {
 	cred := model2.OnePanelCredentials{
-		Name:          onePanelName,
-		Password:      onePanelPassword,
+		Name:          config.NextWebInfo.UserName,
+		Password:      config.NextWebInfo.Password,
 		IgnoreCaptcha: true,
 		Captcha:       "",
 		CaptchaID:     "",
@@ -154,10 +150,10 @@ func OnePanelLogin(c *gin.Context) error {
 		Language:      "en",
 	}
 
-	response, cookies, err := service.MyService.OnePanel().Login(cred, onePanelServer, onePanelEntranceCode)
+	response, cookies, err := service.MyService.OnePanel().Login(cred, config.NextWebInfo.Server, config.NextWebInfo.EntranceCode)
 	fmt.Println(response)
 	if err != nil {
-		logger.Error("OnePanel login failed", zap.Error(err))
+		logger.Error("NextWeb login failed", zap.Error(err))
 		return err
 	}
 
@@ -195,7 +191,7 @@ func OnePanelUpdateProxyWebsite(c *gin.Context) {
 		headers[key] = value[0]
 	}
 	var search model2.SearchWebsiteResponse
-	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, config.NextWebInfo.Server, headers)
 	if err != nil {
 		c.JSON(common_err.SERVICE_ERROR,
 			model.Result{
@@ -207,7 +203,7 @@ func OnePanelUpdateProxyWebsite(c *gin.Context) {
 		var proxy model2.ProxyWebsiteRequest
 		proxy.ID = search.Data.Items[0].ID
 		var proxyResult model2.ProxyWebsiteResponse
-		proxyResult, err := service.MyService.OnePanel().GetProxyWebsite(proxy, onePanelServer, headers)
+		proxyResult, err := service.MyService.OnePanel().GetProxyWebsite(proxy, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -219,7 +215,7 @@ func OnePanelUpdateProxyWebsite(c *gin.Context) {
 		updateProxy = proxyResult.Data[0]
 		updateProxy.Operate = "edit"
 		updateProxy.ProxyPass = protocol + "://" + hostname + ":" + port
-		updateProxyResult, err := service.MyService.OnePanel().UpdateProxyWebsite(updateProxy, onePanelServer, headers)
+		updateProxyResult, err := service.MyService.OnePanel().UpdateProxyWebsite(updateProxy, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -260,7 +256,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 	searchParam.OrderBy = "created_at"
 	searchParam.Order = "null"
 	searchParam.WebsiteGroupID = 0
-	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, config.NextWebInfo.Server, headers)
 	if err != nil {
 		c.JSON(common_err.SERVICE_ERROR,
 			model.Result{
@@ -273,7 +269,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		var proxy model2.ProxyWebsiteRequest
 		proxy.ID = search.Data.Items[0].ID
 		var proxyResult model2.ProxyWebsiteResponse
-		proxyResult, err := service.MyService.OnePanel().GetProxyWebsite(proxy, onePanelServer, headers)
+		proxyResult, err := service.MyService.OnePanel().GetProxyWebsite(proxy, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -287,7 +283,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 
 		updateProxy.Operate = "edit"
 		updateProxy.ProxyPass = "http://" + hostname + ":" + port
-		updateProxyResult, err := service.MyService.OnePanel().UpdateProxyWebsite(updateProxy, onePanelServer, headers)
+		updateProxyResult, err := service.MyService.OnePanel().UpdateProxyWebsite(updateProxy, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -304,7 +300,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		}
 		searchSSLParam.Page = 0
 		searchSSLParam.PageSize = 0
-		searchSSL, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSLParam, onePanelServer, headers)
+		searchSSL, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSLParam, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -404,7 +400,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 	searchParam.OrderBy = "created_at"
 	searchParam.Order = "null"
 	searchParam.WebsiteGroupID = 0
-	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, config.NextWebInfo.Server, headers)
 	if err != nil {
 		c.JSON(common_err.SERVICE_ERROR,
 			model.Result{
@@ -413,7 +409,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			})
 	}
 	if search.Data.Total == 0 {
-		response, err := service.MyService.OnePanel().CreateWebsite(website, onePanelServer, headers)
+		response, err := service.MyService.OnePanel().CreateWebsite(website, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -421,7 +417,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 				})
 		}
-		search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+		search, err := service.MyService.OnePanel().SearchWebsite(searchParam, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -435,7 +431,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			searchSSL.Page = 0
 			searchSSL.PageSize = 0
 			sslId := -1
-			ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
+			ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, config.NextWebInfo.Server, headers)
 			if err != nil {
 				c.JSON(common_err.SERVICE_ERROR,
 					model.Result{
@@ -481,7 +477,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			searchAcme.Page = 0
 			searchAcme.PageSize = 0
 			if sslProvider == "http" {
-				acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
+				acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, config.NextWebInfo.Server, headers)
 				if err != nil {
 					c.JSON(common_err.SERVICE_ERROR,
 						model.Result{
@@ -492,7 +488,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 				}
 				acmeId = acme.Data.Items[0].ID
 			}
-			search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+			search, err := service.MyService.OnePanel().SearchWebsite(searchParam, config.NextWebInfo.Server, headers)
 			if err != nil {
 				c.JSON(common_err.SERVICE_ERROR,
 					model.Result{
@@ -541,7 +537,7 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 	var searchSelfSignedCert model2.SelfSignedCertSearchRequest
 	searchSelfSignedCert.Page = 1
 	searchSelfSignedCert.PageSize = 1000
-	selfsignedCert, err := service.MyService.OnePanel().SelfSignedCertSearch(searchSelfSignedCert, onePanelServer, headers)
+	selfsignedCert, err := service.MyService.OnePanel().SelfSignedCertSearch(searchSelfSignedCert, config.NextWebInfo.Server, headers)
 	if err != nil {
 		return 0, err
 	}
@@ -555,7 +551,7 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 		createParam.OrganizationUint = "nextweb"
 		createParam.Province = "HaDong"
 		createParam.City = "HaNoi"
-		createNewSelfSignCert, err := service.MyService.OnePanel().CreateSelfSignedCert(createParam, onePanelServer, headers)
+		createNewSelfSignCert, err := service.MyService.OnePanel().CreateSelfSignedCert(createParam, config.NextWebInfo.Server, headers)
 		if err != nil {
 			return 0, err
 		}
@@ -574,7 +570,7 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 		issueSelfSignedCertReq.Description = ""
 		issueSelfSignedCertReq.ExecShell = false
 		issueSelfSignedCertReq.Shell = ""
-		issueSelfSignedCertRes, err := service.MyService.OnePanel().IssueSelfSignedCert(issueSelfSignedCertReq, onePanelServer, headers)
+		issueSelfSignedCertRes, err := service.MyService.OnePanel().IssueSelfSignedCert(issueSelfSignedCertReq, config.NextWebInfo.Server, headers)
 		if err != nil {
 			return 0, err
 		}
@@ -582,7 +578,7 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 		var searchSSL model2.SearchSSLRequest
 		searchSSL.Page = 0
 		searchSSL.PageSize = 0
-		ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, onePanelServer, headers)
+		ssl, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSL, config.NextWebInfo.Server, headers)
 		if err != nil {
 			return 0, err
 		}
@@ -598,7 +594,7 @@ func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]st
 	var searchAcme model2.AcmeSearchRequest
 	searchAcme.Page = 0
 	searchAcme.PageSize = 0
-	acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, onePanelServer, headers)
+	acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, config.NextWebInfo.Server, headers)
 	if err != nil {
 		return 0, err
 	}
@@ -620,7 +616,7 @@ func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]st
 		createSSL.Nameserver2 = ""
 		createSSL.ExecShell = false
 		createSSL.Shell = ""
-		createSSLRes, err := service.MyService.OnePanel().ApplyWebsiteSSl(createSSL, onePanelServer, headers)
+		createSSLRes, err := service.MyService.OnePanel().ApplyWebsiteSSl(createSSL, config.NextWebInfo.Server, headers)
 		return createSSLRes.Data.ID, err
 	}
 	return 0, err
@@ -640,7 +636,7 @@ func UpdateWebsiteHttps(enable bool, acmeAccountID int, websiteSSLID int, websit
 	updateConfig.Hsts = true
 	updateConfig.Algorithm = "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:!aNULL:!eNULL:!EXPORT:!DSS:!DES:!RC4:!3DES:!MD5:!PSK:!KRB5:!SRP:!CAMELLIA:!SEED"
 	updateConfig.SSLProtocol = append(updateConfig.SSLProtocol, "TLSv1.3", "TLSv1.2", "TLSv1.1", "TLSv1")
-	updateWebsite, err := service.MyService.OnePanel().UpdateWebsiteProtocol(updateConfig, onePanelServer, headers)
+	updateWebsite, err := service.MyService.OnePanel().UpdateWebsiteProtocol(updateConfig, config.NextWebInfo.Server, headers)
 	if err != nil {
 		return model2.GenericResponse{}, err
 	}
@@ -671,7 +667,7 @@ func OnePanelDeleteWebsite(c *gin.Context) {
 	for key, value := range c.Request.Header {
 		headers[key] = value[0]
 	}
-	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, onePanelServer, headers)
+	search, err := service.MyService.OnePanel().SearchWebsite(searchParam, config.NextWebInfo.Server, headers)
 	if err != nil {
 		c.JSON(common_err.SERVICE_ERROR,
 			model.Result{
@@ -685,7 +681,7 @@ func OnePanelDeleteWebsite(c *gin.Context) {
 		delete.DeleteApp = false
 		delete.DeleteBackup = false
 		delete.ForceDelete = false
-		response, err := service.MyService.OnePanel().DeleteWebsite(delete, onePanelServer, headers)
+		response, err := service.MyService.OnePanel().DeleteWebsite(delete, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -705,7 +701,7 @@ func OnePanelDeleteWebsite(c *gin.Context) {
 		searchSSLParam.AcmeAccountID = ""
 		searchSSLParam.Page = 0
 		searchSSLParam.PageSize = 0
-		searchSSL, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSLParam, onePanelServer, headers)
+		searchSSL, err := service.MyService.OnePanel().SearchWebsiteSSl(searchSSLParam, config.NextWebInfo.Server, headers)
 		if err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
 				model.Result{
@@ -721,7 +717,7 @@ func OnePanelDeleteWebsite(c *gin.Context) {
 				}
 			}
 			if len(deleleSSL.Ids) > 0 {
-				deleteResult, err := service.MyService.OnePanel().DeleteWebsiteSSL(deleleSSL, onePanelServer, headers)
+				deleteResult, err := service.MyService.OnePanel().DeleteWebsiteSSL(deleleSSL, config.NextWebInfo.Server, headers)
 				if err != nil {
 					c.JSON(common_err.SERVICE_ERROR,
 						model.Result{
@@ -854,10 +850,10 @@ func InitOIDC() {
 				successCount++
 				// TODO will enable in production
 				// Exponential backoff with a cap
-				// sleepTime = minSleep * time.Duration(successCount)
+				sleepTime = minSleep * time.Duration(successCount)
 				if sleepTime > maxSleep {
 					// TODO will enable in production
-					// sleepTime = maxSleep
+					sleepTime = maxSleep
 				}
 
 			} else {
@@ -868,7 +864,7 @@ func InitOIDC() {
 				sleepTime = minSleep * time.Duration(failCount)
 				if failCount > maxRetryBackoff {
 					// TODO will enable in production
-					// sleepTime = minSleep * time.Duration(maxRetryBackoff)
+					sleepTime = minSleep * time.Duration(maxRetryBackoff)
 				}
 				log.Printf("OIDC initialization failed: %v. Retrying in %v", err, sleepTime)
 			}
@@ -898,6 +894,12 @@ func OIDC() error {
 		authServer = authentik.Issuer
 		authURL = authentik.AuthUrl
 		callbackURL = authentik.CallbackUrl
+	} else {
+		clientID = config.OIDCInfo.ClientID
+		clientSecret = config.OIDCInfo.ClientSecret
+		authServer = config.OIDCInfo.AuthServer
+		authURL = config.OIDCInfo.AuthURL
+		callbackURL = config.OIDCInfo.CallbackURL
 	}
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, authURL)
@@ -910,7 +912,6 @@ func OIDC() error {
 		RedirectURL:  callbackURL,
 		Endpoint:     provider.Endpoint(),
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "offline_access", "goauthentik.io/api"},
-		//add offline access for refresh token
 	}
 	return nil
 }
@@ -1128,7 +1129,7 @@ func determineUserRole(isSuperuser bool) string {
 	return "user"
 }
 func OnePanelHealthCheck(c *gin.Context) {
-	status, err := service.MyService.OnePanel().HealthCheck(onePanelServer)
+	status, err := service.MyService.OnePanel().HealthCheck(config.NextWebInfo.Server)
 	if err != nil || status == "Offline" {
 		c.JSON(http.StatusOK, model.Result{Success: common_err.OIDC_OFFLINE, Message: common_err.GetMsg(common_err.OIDC_OFFLINE), Data: "Offline"})
 		return

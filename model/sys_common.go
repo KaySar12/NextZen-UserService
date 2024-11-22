@@ -5,16 +5,27 @@ type CommonModel struct {
 }
 
 type APPModel struct {
-	LogPath         string
-	LogSaveName     string
-	LogFileExt      string
-	UserDataPath    string
-	DBPath          string
-	OMVServer       string
-	AuthentikServer string
-	SecretKey       string
+	LogPath      string
+	LogSaveName  string
+	LogFileExt   string
+	UserDataPath string
+	DBPath       string
 }
 
+type OIDCModel struct {
+	AuthServer   string
+	ClientID     string
+	ClientSecret string
+	AuthURL      string
+	CallbackURL  string
+}
+
+type NextWebModel struct {
+	Server       string
+	UserName     string
+	Password     string
+	EntranceCode string
+}
 type Result struct {
 	Success int         `json:"success" example:"200"`
 	Message string      `json:"message" example:"ok"`

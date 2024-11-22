@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/KaySar12/NextZen-UserService/pkg/config"
 	"github.com/KaySar12/NextZen-UserService/service/model"
 )
 
@@ -36,7 +35,8 @@ func (o *omvService) LoginSession(username string, password string) (string, []*
 		},
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	response, err := http.Post(config.AppInfo.OMVServer, "application/json", responseBody)
+	// response, err := http.Post(config.AppInfo.OMVServer, "application/json", responseBody)
+	response, err := http.Post("", "application/json", responseBody)
 	cookies := response.Cookies()
 	if err != nil {
 		fmt.Print(err.Error())
@@ -55,7 +55,8 @@ func (o *omvService) Logout(sessionID string) (string, error) {
 		"params":  nil,
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	req, err := http.NewRequest("POST", config.AppInfo.OMVServer, responseBody)
+	//req, err := http.NewRequest("POST", config.AppInfo.OMVServer, responseBody)
+	req, err := http.NewRequest("POST", "", responseBody)
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
@@ -89,7 +90,7 @@ func (o *omvService) AuthUser(username string, password string, sessionID string
 		},
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	req, err := http.NewRequest("POST", config.AppInfo.OMVServer, responseBody)
+	req, err := http.NewRequest("POST", "", responseBody)
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}
@@ -125,7 +126,8 @@ func (o *omvService) GetUser(username string, sessionID string) (string, error) 
 	responseBody := bytes.NewBuffer(postBody)
 
 	// Create HTTP request and set session ID header
-	req, err := http.NewRequest("POST", config.AppInfo.OMVServer, responseBody)
+	// req, err := http.NewRequest("POST", config.AppInfo.OMVServer, responseBody)
+	req, err := http.NewRequest("POST", "", responseBody)
 	if err != nil {
 		return "", fmt.Errorf("error creating request: %v", err)
 	}

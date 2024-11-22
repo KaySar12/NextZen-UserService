@@ -24,6 +24,19 @@ var (
 		LogSaveName:  "user",
 		LogFileExt:   "log",
 	}
+	OIDCInfo = &model.OIDCModel{
+		AuthServer:   "",
+		ClientID:     "",
+		ClientSecret: "",
+		AuthURL:      "",
+		CallbackURL:  "",
+	}
+	NextWebInfo = &model.NextWebModel{
+		Server:       "",
+		UserName:     "",
+		Password:     "",
+		EntranceCode: "",
+	}
 
 	Cfg            *ini.File
 	ConfigFilePath string
@@ -60,8 +73,11 @@ func InitSetup(config string, sample string) {
 		os.Exit(1)
 	}
 
+	mapTo("oidc", OIDCInfo)
+	mapTo("nextweb", NextWebInfo)
 	mapTo("common", CommonInfo)
 	mapTo("app", AppInfo)
+
 }
 
 func SaveSetup(config string) {

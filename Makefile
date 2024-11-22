@@ -23,7 +23,7 @@ build_service:
 
 package:
 	 cp  $(CUR_DIR)/dist/$(SERVICE)-$(ARCHITECHTURE)_$(OS)_$(ARCHITECHTURE)_$(VERSION)/$(BIN_PATH)/$(SERVICE) $(CUR_DIR)/$(BIN_PATH) \
-	 && tar -czvf $(PACKAGE_NAME).tar.gz $(CUR_DIR)/$(BUILD_PATH)
+	 && tar -czvf $(PACKAGE_NAME).tar.gz $(BUILD_PATH)
 
 archive_package:
 	@mkdir -p $(CUR_DIR)/$(ARCHIVE_PATH)/$(CUR_TAG)
