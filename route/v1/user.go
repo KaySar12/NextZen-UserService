@@ -1581,7 +1581,6 @@ func GetUserCustomConf(c *gin.Context) {
 		return
 	}
 	id := c.GetHeader("user_id")
-
 	user := service.MyService.User().GetUserInfoById(id)
 	//	user := service.MyService.User().GetUserInfoByUsername(Username)
 	if user.Id == 0 {
@@ -1589,14 +1588,23 @@ func GetUserCustomConf(c *gin.Context) {
 			model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
 		return
 	}
-	filePath := config.AppInfo.UserDataPath + "/" + id + "/" + name + ".json"
-
-	data := file.ReadFullFile(filePath)
-	if !gjson.ValidBytes(data) {
-		c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: string(data)})
-		return
+	if name == "default-app" {
+		filePath := config.AppInfo.UserDataPath + "/default/link.json"
+		data := file.ReadFullFile(filePath)
+		if !gjson.ValidBytes(data) {
+			c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: string(data)})
+			return
+		}
+		c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: json2.RawMessage(string(data))})
+	} else {
+		filePath := config.AppInfo.UserDataPath + "/" + id + "/" + name + ".json"
+		data := file.ReadFullFile(filePath)
+		if !gjson.ValidBytes(data) {
+			c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: string(data)})
+			return
+		}
+		c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: json2.RawMessage(string(data))})
 	}
-	c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: json2.RawMessage(string(data))})
 }
 
 /**
@@ -1619,20 +1627,32 @@ func PostUserCustomConf(c *gin.Context) {
 		return
 	}
 	data, _ := io.ReadAll(c.Request.Body)
-	filePath := config.AppInfo.UserDataPath + "/" + strconv.Itoa(user.Id)
+	if name == "default-app" {
+		filePath := config.AppInfo.UserDataPath + "/default"
+		if err := file.IsNotExistMkDir(filePath); err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
+		if err := file.WriteToPath(data, filePath, "link.json"); err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
+	} else {
+		filePath := config.AppInfo.UserDataPath + "/" + strconv.Itoa(user.Id)
+		if err := file.IsNotExistMkDir(filePath); err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
 
-	if err := file.IsNotExistMkDir(filePath); err != nil {
-		c.JSON(common_err.SERVICE_ERROR,
-			model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
-		return
+		if err := file.WriteToPath(data, filePath, name+".json"); err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
 	}
-
-	if err := file.WriteToPath(data, filePath, name+".json"); err != nil {
-		c.JSON(common_err.SERVICE_ERROR,
-			model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
-		return
-	}
-
 	if name == "system" {
 		dataMap := make(map[string]string, 1)
 		dataMap["system"] = string(data)

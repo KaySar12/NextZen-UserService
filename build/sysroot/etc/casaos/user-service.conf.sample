@@ -11,12 +11,21 @@ UserDataPath = /var/lib/casaos
 [oidc]
 AuthServer = https://account.nextzenvn.com
 ClientID = WzN5QB9e0LfCSAYTB542RLpIGKcAWNNZgVbeTLaz
-ClientSecret = D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fPi6B9IFe3aDBo8x
+ClientSecret = D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fP
+i6B9IFe3aDBo8x
 AuthURL = https://account.nextzenvn.com/application/o/nextzenos/
 CallbackURL = https://home.nextzenvn.com/v1/users/oidc/callback
 
 [nextweb]
-Server = https://127.0.0.1:10086
+Server = http://127.0.0.1:10086
 UserName = nextzen
 Password = Smartyourlife123@*
-EntranceCode = 
+EntranceCode =
+
+[default-app]
+NextFireWall = NextFirewall-https://firewall.nextzenvn.com-https://cdn.nextzenos.com/CDN/Images/raw/commit/ded8610b855ac31cb08514460e78b93fff9ea127/NextFirewall/nextfirewall.png-DefaultApp-running
+NextWeb = NextWeb-https://web.nextzenvn.com-https://cdn.nextzenos.com/CDN/Images/raw/commit/c68656087a0387281a1345ff78c89eb36cb925a4/NextWeb/nextweb.png-DefaultApp-running
+AccountCenter = AccountCenter-https://account.nextzenvn.com-https://cdn.nextzenos.com/CDN/Images/raw/commit/f8c809f8ade653db6cec0915d1e7fadfcdb15241/AccountManager/account.png-DefaultApp-running
+NextVPN = NextVPN-https://vpn.nextzenvn.com-https://cdn.nextzenos.com/CDN/Images/raw/commit/f5507a5bfa811eae29b67b1f1fc5ac5d8fc5c3e8/NextVPN/nextvpn.png-DefaultApp-running
+NextNAS = NextNAS-https://nas.nextzenvn.com-https://cdn.nextzenos.com/CDN/Images/raw/commit/0693ac3497cb5c46b7e797ec7afb511fdb5d8804/NextNAS/nextnas.jpg-DefaultApp-running
+NextDNS = NextDNS-https://dns.nextzenvn.com-https://cdn.nextzenos.com/CDN/Images/raw/commit/874a16e2647e8633f60845dd2d770bbd4aaccfd4/NextDNS/nextdns.png-DefaultApp-running

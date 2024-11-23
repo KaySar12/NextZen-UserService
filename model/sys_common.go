@@ -26,6 +26,18 @@ type NextWebModel struct {
 	Password     string
 	EntranceCode string
 }
+
+type DefaultModel struct {
+	Apps map[string]AppInfo
+}
+
+type AppInfo struct {
+	Hostname string `json:"hostname,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Icon     string `json:"icon,omitempty"`
+	AppType  string `json:"app_type,omitempty"`
+	Status   string `json:"status,omitempty"`
+}
 type Result struct {
 	Success int         `json:"success" example:"200"`
 	Message string      `json:"message" example:"ok"`

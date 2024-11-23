@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
@@ -21,9 +22,11 @@ import (
 	"github.com/KaySar12/NextZen-Common/utils/logger"
 	"github.com/KaySar12/NextZen-UserService/codegen/message_bus"
 	"github.com/KaySar12/NextZen-UserService/common"
+	model2 "github.com/KaySar12/NextZen-UserService/model"
 	"github.com/KaySar12/NextZen-UserService/pkg/config"
 	"github.com/KaySar12/NextZen-UserService/pkg/sqlite"
 	"github.com/KaySar12/NextZen-UserService/pkg/utils/encryption"
+	"github.com/KaySar12/NextZen-UserService/pkg/utils/file"
 	"github.com/KaySar12/NextZen-UserService/pkg/utils/random"
 	"github.com/KaySar12/NextZen-UserService/route"
 	"github.com/KaySar12/NextZen-UserService/service"
@@ -122,7 +125,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	// create default app path
+	defaultDir := config.AppInfo.UserDataPath + "/" + "default"
+	if err := file.IsNotExistMkDir(defaultDir); err != nil {
+		panic(err)
+	}
+	appData := convertMapToSlice(config.DefaultAppInfo.Apps)
+	initApp, err := json.Marshal(appData)
+	if err != nil {
+		panic(err)
+	}
+	if err := file.WriteToPath(initApp, defaultDir, "link.json"); err != nil {
+		panic(err)
+	}
 	apiPaths := []string{
 		"/v1/users",
 		"/v1/1panel",
@@ -130,6 +145,7 @@ func main() {
 		route.V2DocPath,
 		"/" + jwt.JWKSPath,
 	}
+
 	for _, v := range apiPaths {
 		err = service.MyService.Gateway().CreateRoute(&model.Route{
 			Path:   v,
@@ -184,7 +200,15 @@ func main() {
 		panic(err)
 	}
 }
+func convertMapToSlice(appsMap map[string]model2.AppInfo) []model2.AppInfo {
+	appsSlice := make([]model2.AppInfo, 0, len(appsMap))
 
+	for _, app := range appsMap {
+		appsSlice = append(appsSlice, app)
+	}
+
+	return appsSlice
+}
 func writeAddressFile(runtimePath string, filename string, address string) (string, error) {
 	err := os.MkdirAll(runtimePath, 0o755)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/KaySar12/NextZen-Common/utils/constants"
 	"github.com/KaySar12/NextZen-UserService/model"
@@ -37,7 +38,9 @@ var (
 		Password:     "",
 		EntranceCode: "",
 	}
-
+	DefaultAppInfo = &model.DefaultModel{
+		Apps: map[string]model.AppInfo{},
+	}
 	Cfg            *ini.File
 	ConfigFilePath string
 )
@@ -77,9 +80,33 @@ func InitSetup(config string, sample string) {
 	mapTo("nextweb", NextWebInfo)
 	mapTo("common", CommonInfo)
 	mapTo("app", AppInfo)
-
+	mapToDefaultApp("default-app", DefaultAppInfo)
+	fmt.Println(DefaultAppInfo)
 }
+func mapToDefaultApp(section string, v interface{}) {
+	sectionData := Cfg.Section(section)
+	dm, ok := v.(*model.DefaultModel)
+	if !ok {
+		log.Fatal("Invalid type passed to mapToDefaultApp")
+	}
 
+	// Iterate through all keys in the section
+	for key, value := range sectionData.KeysHash() {
+		// Split the value string into components (Name, URL, Icon)
+		parts := strings.Split(value, "-")
+		if len(parts) == 5 {
+			dm.Apps[key] = model.AppInfo{
+				Name:     parts[0],
+				Hostname: parts[1],
+				Icon:     parts[2],
+				AppType:  parts[3],
+				Status:   parts[4],
+			}
+		} else {
+			log.Printf("Invalid app info format for key: %s, value: %s", key, value)
+		}
+	}
+}
 func SaveSetup(config string) {
 	reflectFrom("common", CommonInfo)
 	reflectFrom("app", AppInfo)
