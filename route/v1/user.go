@@ -31,6 +31,7 @@ import (
 	"github.com/KaySar12/NextZen-UserService/model"
 	"github.com/KaySar12/NextZen-UserService/model/system_model"
 	"github.com/KaySar12/NextZen-UserService/pkg/config"
+	cfg "github.com/KaySar12/NextZen-UserService/pkg/utils/config"
 	"github.com/KaySar12/NextZen-UserService/pkg/utils/encryption"
 	"github.com/KaySar12/NextZen-UserService/pkg/utils/file"
 	"github.com/KaySar12/NextZen-UserService/service"
@@ -1626,8 +1627,27 @@ func PostUserCustomConf(c *gin.Context) {
 			model.Result{Success: common_err.USER_NOT_EXIST, Message: common_err.GetMsg(common_err.USER_NOT_EXIST)})
 		return
 	}
-	data, _ := io.ReadAll(c.Request.Body)
+	data, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		logger.Error("Failed to read request body", zap.Error(err))
+		c.JSON(common_err.SERVICE_ERROR, model.Result{
+			Success: common_err.SERVICE_ERROR,
+			Message: common_err.GetMsg(common_err.SERVICE_ERROR),
+		})
+		return
+	}
 	if name == "default-app" {
+		var appInfos []model.AppInfo
+		err := json.Unmarshal([]byte(data), &appInfos)
+		if err != nil {
+			c.JSON(common_err.SERVICE_ERROR,
+				model.Result{Success: common_err.SERVICE_ERROR, Message: common_err.GetMsg(common_err.SERVICE_ERROR)})
+			return
+		}
+		go func() {
+			configData := formatAppInfosToMap(appInfos)
+			cfg.WriteMapToConfig(configData, name)
+		}()
 		filePath := config.AppInfo.UserDataPath + "/default"
 		if err := file.IsNotExistMkDir(filePath); err != nil {
 			c.JSON(common_err.SERVICE_ERROR,
@@ -1664,10 +1684,18 @@ func PostUserCustomConf(c *gin.Context) {
 		if response.StatusCode() != http.StatusOK {
 			logger.Error("failed to publish event to message bus", zap.String("status", response.Status()), zap.Any("response", response))
 		}
-
 	}
 
 	c.JSON(common_err.SUCCESS, model.Result{Success: common_err.SUCCESS, Message: common_err.GetMsg(common_err.SUCCESS), Data: json2.RawMessage(string(data))})
+}
+func formatAppInfosToMap(appInfos []model.AppInfo) map[string]string {
+	formattedMap := make(map[string]string)
+	for _, appInfo := range appInfos {
+		formattedString := fmt.Sprintf("%s-%s-%s-%s-%s",
+			appInfo.Name, appInfo.Hostname, appInfo.Icon, appInfo.AppType, appInfo.Status)
+		formattedMap[appInfo.Name] = formattedString
+	}
+	return formattedMap
 }
 
 /**

@@ -11,8 +11,7 @@ UserDataPath = /var/lib/casaos
 [oidc]
 AuthServer = https://account.nextzenvn.com
 ClientID = WzN5QB9e0LfCSAYTB542RLpIGKcAWNNZgVbeTLaz
-ClientSecret = D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fP
-i6B9IFe3aDBo8x
+ClientSecret = D1mbEz1VHkPnhvMGPfj5aAmjOuZ1ZIYGm7qAReMCivdXwiQ60BJoa4cpdX5m9Z5aKgtR8d56xgmYAy7TR86MEV6zJXfjxy2lf0TTAPXc8ftEcst8fPi6B9IFe3aDBo8x
 AuthURL = https://account.nextzenvn.com/application/o/nextzenos/
 CallbackURL = https://home.nextzenvn.com/v1/users/oidc/callback
 

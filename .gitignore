@@ -44,3 +44,4 @@ dist/casaos-user-service-amd64_linux_amd64_v1/build/sysroot/usr/bin/casaos-user-
 .env
 .vscode/launch.json
 dist/metadata.json
+*.gz
