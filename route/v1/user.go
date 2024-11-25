@@ -317,7 +317,6 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		}
 		if search.Data.Items[0].Protocol != protocol && protocol == "http" {
 			//TODO disable HTTPS
-
 			if sslId > 0 {
 				var updateHttps, err = UpdateWebsiteHttps(false, acmeId, sslId, search.Data.Items[0].ID, headers)
 				if err != nil {
@@ -428,6 +427,7 @@ func OnePanelCreateWebsite(c *gin.Context) {
 		}
 		if protocol == "https" {
 			//TODO Find SSL
+			var validSSL bool
 			var searchSSL model2.SearchSSLRequest
 			searchSSL.Page = 0
 			searchSSL.PageSize = 0
@@ -459,6 +459,18 @@ func OnePanelCreateWebsite(c *gin.Context) {
 							})
 						return
 					}
+					if sslId > 0 {
+						validSSL, err = checkGlobalSSLStatus(sslId, headers, domain, 10)
+						if err != nil {
+							c.JSON(common_err.SUCCESS,
+								model.Result{
+									Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+									Message: fmt.Sprintf("Fail to upgrade %s from http to https", domain),
+									Data:    false,
+								})
+							return
+						}
+					}
 				} else {
 					sslId, err = IssueSelfSignedCert(domain, search.Data.Items[0].ID, headers, 3)
 					if err != nil {
@@ -470,13 +482,23 @@ func OnePanelCreateWebsite(c *gin.Context) {
 							})
 						return
 					}
+					validSSL = true
 				}
+			}
+			if sslId < 0 || !validSSL {
+				c.JSON(common_err.SUCCESS,
+					model.Result{
+						Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+						Message: fmt.Sprintf("Fail to Create SSL or domain %s is invalid to create global SSL", domain),
+						Data:    false,
+					})
+				return
 			}
 			// TODO Enable HTTPS
 			var searchAcme model2.AcmeSearchRequest
 			acmeId := 0
-			searchAcme.Page = 0
-			searchAcme.PageSize = 0
+			searchAcme.Page = 1
+			searchAcme.PageSize = 1000
 			if sslProvider == "http" {
 				acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, config.NextWebInfo.Server, headers)
 				if err != nil {
@@ -530,6 +552,27 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			Success: common_err.SUCCESS,
 			Message: common_err.GetMsg(common_err.SUCCESS),
 		})
+}
+
+func checkGlobalSSLStatus(sslId int, headers map[string]string, domain string, retries int) (bool, error) {
+	if retries <= 0 {
+		return false, errors.New("timeout waiting for SSL certificate to become ready")
+	}
+
+	sslDetail, err := service.MyService.OnePanel().GetSSLDetail(sslId, config.NextWebInfo.Server, headers)
+	if err != nil {
+		return false, err
+	}
+	if sslDetail.Data.Status == "ready" {
+		return true, nil
+	}
+	if sslDetail.Data.Status == "applyError" {
+		return false, nil
+	}
+
+	time.Sleep(3 * time.Second)
+
+	return checkGlobalSSLStatus(sslId, headers, domain, retries-1)
 }
 func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string, maxAttempts int) (int, error) {
 	if maxAttempts <= 0 {
@@ -593,8 +636,8 @@ func IssueSelfSignedCert(domain string, websiteId int, headers map[string]string
 }
 func OnePanelApplyWebsiteSSl(domain string, websiteId int, headers map[string]string) (int, error) {
 	var searchAcme model2.AcmeSearchRequest
-	searchAcme.Page = 0
-	searchAcme.PageSize = 0
+	searchAcme.Page = 1
+	searchAcme.PageSize = 10000
 	acme, err := service.MyService.OnePanel().AcmeAccountSearch(searchAcme, config.NextWebInfo.Server, headers)
 	if err != nil {
 		return 0, err

@@ -29,6 +29,7 @@ type OnePanelService interface {
 	SearchWebsiteSSl(m model2.SearchSSLRequest, baseUrl string, headers map[string]string) (model2.SearchSSLResponse, error)
 	UpdateWebsiteProtocol(m model2.WebsiteHttpsConfigRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
 	DeleteWebsiteSSL(m model2.DeleteSSLRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error)
+	GetSSLDetail(sslId int, baseUrl string, headers map[string]string) (model2.SSLDetail, error)
 }
 
 var (
@@ -38,7 +39,32 @@ var (
 type onePanelService struct {
 }
 
-// TODO A lot of redundant code need refactor
+func (o *onePanelService) GetSSLDetail(sslId int, baseUrl string, headers map[string]string) (model2.SSLDetail, error) {
+	path := baseUrl + fmt.Sprintf("/api/v1/websites/ssl/%d", sslId)
+
+	req, err := http.NewRequest("GET", path, nil)
+	if err != nil {
+		return model2.SSLDetail{}, fmt.Errorf("error creating request: %v", err)
+	}
+	// Add headers to the request
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return model2.SSLDetail{}, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return model2.SSLDetail{}, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+	var result model2.SSLDetail
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return model2.SSLDetail{}, fmt.Errorf("error decoding response: %v", err)
+	}
+	return result, nil
+}
 func (o *onePanelService) DeleteWebsiteSSL(m model2.DeleteSSLRequest, baseUrl string, headers map[string]string) (model2.GenericResponse, error) {
 	path := baseUrl + "/api/v1/websites/ssl/del"
 	reqBody, err := json.Marshal(m)
