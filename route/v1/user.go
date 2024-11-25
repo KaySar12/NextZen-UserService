@@ -295,6 +295,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		fmt.Println(updateProxyResult)
 		sslId := -1
 		acmeId := 0
+		var validSSL bool
 		var searchSSLParam model2.SearchSSLRequest
 		if sslProvider == "selfSigned" {
 			searchSSLParam.AcmeAccountID = strconv.Itoa(acmeId)
@@ -308,10 +309,12 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 					Success: common_err.SERVICE_ERROR,
 					Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 				})
+			return
 		}
 		for _, item := range searchSSL.Data {
-			if item.Provider == sslProvider && item.PrimaryDomain == domain {
+			if item.Provider == sslProvider && item.PrimaryDomain == domain && item.Status == "ready" {
 				sslId = item.ID
+				validSSL = true
 				break
 			}
 		}
@@ -332,7 +335,7 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		}
 		if sslId < 0 {
 			//TODO create new SSL if not exist
-			if sslProvider == "selfSigned" {
+			if sslProvider == "http" {
 				sslId, err = OnePanelApplyWebsiteSSl(domain, search.Data.Items[0].ID, headers)
 				if err != nil {
 					c.JSON(common_err.SERVICE_ERROR,
@@ -340,6 +343,18 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 							Success: common_err.SERVICE_ERROR,
 							Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 						})
+				}
+				if sslId > 0 {
+					validSSL, err = checkGlobalSSLStatus(sslId, headers, domain, 10)
+					if err != nil {
+						c.JSON(common_err.SUCCESS,
+							model.Result{
+								Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+								Message: fmt.Sprintf("Fail to upgrade %s from http to https", domain),
+								Data:    false,
+							})
+						return
+					}
 				}
 			} else {
 				sslId, err = IssueSelfSignedCert(domain, search.Data.Items[0].ID, headers, 3)
@@ -350,7 +365,17 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 							Message: common_err.GetMsg(common_err.SERVICE_ERROR),
 						})
 				}
+				validSSL = true
 			}
+		}
+		if sslId < 0 || !validSSL {
+			c.JSON(common_err.SUCCESS,
+				model.Result{
+					Success: common_err.COMMAND_ERROR_INVALID_OPERATION,
+					Message: fmt.Sprintf("Fail to Create SSL or domain %s is invalid to create global SSL", domain),
+					Data:    false,
+				})
+			return
 		}
 		updateHttps, err := UpdateWebsiteHttps(true, acmeId, sslId, search.Data.Items[0].ID, headers)
 		if err != nil {
@@ -362,7 +387,6 @@ func OnePanelUpdateWebsite(c *gin.Context) {
 		}
 		fmt.Println(updateHttps)
 		return
-
 	}
 }
 func OnePanelCreateWebsite(c *gin.Context) {
@@ -442,8 +466,9 @@ func OnePanelCreateWebsite(c *gin.Context) {
 			}
 
 			for _, item := range ssl.Data {
-				if item.PrimaryDomain == domain && item.Provider == sslProvider {
+				if item.PrimaryDomain == domain && item.Provider == sslProvider && item.Status == "ready" {
 					sslId = item.ID
+					validSSL = true
 					break
 				}
 			}
